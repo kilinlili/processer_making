@@ -3,6 +3,7 @@ module id1(
     output [4:0] toEXRd,
     output [4:0] toEXRs,
     output [4:0] toEXRt,
+    output [4:0] toshamt,
     /*32bits main data*/
 
     input EXMEMRegWrite,EXMEMMemread,
@@ -20,6 +21,7 @@ module id1(
     /*register*/
     input [4:0] writeregi,//& wire IFIDRs & wire IFIDRt
     input [31:0] writeregidata,
+    input WBRegwrite,
     //out:wire fromRegRs,fromRegRt
     /*register*/
 
@@ -30,17 +32,23 @@ module id1(
     //Is this "output"?????????????????????????????????????????????????????????
 
     output balandlink,//to pipeline
+    output [31:0] beqtojrjalr32,
     //main_beq.v
     //beq_jumpCTL.v is all wire 
+    output toIFpcsrc,//to IFstage 
+    //iand
 
     output [3:0]ALUctltopipe,
     output ALUopshamtsig,
     output ALUopjalrsig,
-    output /*wire ??*/[1:0] ALUoprjump
+    output /*wire ??*/[1:0] ALUoprjump,
     /*
     input:wire fromCTRL's ALUop[1:0]
     */
     //ALUCTL.v
+
+    output [1:0] toIFjump
+    //CTRL.v // almost wire
 
 
 );
@@ -61,14 +69,23 @@ module id1(
     wire [31:0] tobranchaddA;//&input branchadder B 
     wire [5:0] aluopandbeqjumpfunccode;//to aluop & to branch jumpctl
     wire [3:0] beqjumpcode;//from beqjumpctl to main beq
-    wire tobeqand;
+    wire tobeqand;//from main_beq to iand
+
+    /*CTRL wires*/
+    wire CTRLRegDst,CTRLBranch,CTRLMemRead,CTRLMemtoReg,CTRLMemWrite,CTRLALUSrc,CTRLRegWrite;
+    wire CTRLjalsig;
+    wire [3:0] CTRLIALUCtl;
+    wire [1:0] CTRLALUOp,CTRLJump;
+    wire CTRLlwusig;
+    wire [1:0] CTRLSIZE;
+    /*CTRL wires*/
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     assign toEXRd = thirtytwo[15:11];//----->to pipeline 
     assign toEXRs = thirtytwo[25:21];//----->to pipeline
     assign toEXRt = thirtytwo[20:16];//----->to pipeline //2 line? --> 1line change OK
-
+    assign toshamt= thirtytwo[10:6]; //----->to pipeline  // or IFIDsh OK
 
     forwarding2 forward2(
         .ForwardC(forc),.ForwardD(ford),//to forwardc & fowardd
@@ -114,7 +131,7 @@ module id1(
     );
 
     adder branchadd(
-        .data1(tobranchaddA),.data2(tobranchaddB),.adder_out()///////////////////////////////////////////////////////???????????????????????????????????????
+        .data1(tobranchaddA),.data2(tobranchaddB),.adder_out(branchaddanswer)///////////////////////////////////////////////////////???????????????????????????????????????
     );
 
     beqjump beqjumpctrl(
@@ -125,26 +142,31 @@ module id1(
     mainbeq i_mainbeq(
         .fromreg1(Ctobeqandpipe)/*32*/,.fromreg2(Dtobeqandpipe)/*32bit*/,.ctlbeq(beqjumpcode)/*6bit in*/,
         .branchin(tobeqand),.alout(balandlink),//wire:tobeqand -> iand(R)//output balandlink
-        .jrre()////////////////////////////////////////////////////////?????????????????????????????????????????????????????????????/////32bit jump saki data
+        .jrre(beqtojrjalr32)////////////////////////////////////////////////////////?????????????????????????????????????????????????????????????/////32bit jump saki data
+    );
+    
+    
+    mainCTL name_mainCTRL(
+        .OP(IFIDop),//input IFIDop[5:0] =thirtytwo[31:26]
+        //all ctrlmux
+        .RegDst(CTRLRegDst),.Branch(CTRLBranch),.MemRead(CTRLMemRead),.MemtoReg(CTRLMemtoReg),.MemWrite(CTRLMemWrite),.ALUSrc(CTRLALUSrc),.RegWrite(CTRLRegWrite),//allwire
+        .jalsig(CTRLjalsig),
+        .IALUCtl(CTRLIALUCtl),
+        .ALUOp(CTRLALUOp),
+        .Jump(CTRLJump),
+        .lwusig(CTRLlwusig),.SIZE(CTRLSIZE)
+    );
+
+
+    ALUControl iALU(
+        .ALUOp(),.FuncCode(aluopandbeqjumpfunccode),//wire input
+        .ALUCtl(ALUctltopipe),.jalrsig(ALUopjalrsig),.shamtsig(ALUopshamtsig),//-------------------------------------------------output; to pipeline 
+        .rjump(ALUoprjump)//----------------------------------------------------------------------------------------output ->IFstage
     );
     iand nameand(
         .left(),.right(tobeqand),
-        .ans()
+        .ans(toIFpcsrc)//output OK ??
     );
-    ALUControl iALU(
-        .ALUOp(),.FuncCode(),
-        .ALUCtl(),.jalrsig(),.shamtsig(),
-        .rjump()
-    );
-    mainCTL name_mainCTRL(
-        .OP(IFIDop),
-        .RegDst(),.Branch(),.MemRead(),.MemtoReg(),.MemWrite(),.ALUSrc(),.RegWrite(),
-        .jalsig(),
-        .IALUCtl(),
-        .ALUOp(),.Jump(),
-        .lwusig(),.SIZE()
-    );
-
 
 
 
@@ -347,7 +369,6 @@ module beqjump(Rt,OP,FuncCode,out);
 endmodule
 
 
-
 module iand(left,right,ans);
     input left;
     input right;
@@ -530,7 +551,7 @@ module mainCTL(OP,
 
 
     always @(OP) begin
-        if(OP == 6'b000000) begin //R //func //OK
+        if(OP == 6'b000000) begin //R //func //OK//13gyou
             RegDst   <=1'b1;
             Jump     <=2'b00;
             Branch   <=1'b0;
@@ -543,6 +564,7 @@ module mainCTL(OP,
             IALUCtl <= 4'b1111;//15
             SIZE <= 2'b01;//X
             lwusig <=1'b0;//X
+            jalsig <= 1'b0;
         end
         else if(OP == 6'b000001) begin //bal
             RegDst   <=1'b0;
@@ -555,6 +577,9 @@ module mainCTL(OP,
             RegWrite <=1'b0;
             ALUOp    <= 2'b01;//00->lwsw //10->R//01->X
             IALUCtl <= 4'b1111;//15
+            SIZE <= 2'b01;//X
+            lwusig <=1'b0;//X
+            jalsig <= 1'b0;
         end
         else if(OP == 6'b000010) begin //j
             RegDst   <=1'b0;
@@ -567,6 +592,9 @@ module mainCTL(OP,
             RegWrite <=1'b0;
             ALUOp    <= 2'b01;//j->X
             IALUCtl <= 4'b1111;//15
+            SIZE <= 2'b01;//X
+            lwusig <=1'b0;//X
+            jalsig <= 1'b0;
         end
         else if(OP == 6'b000011) begin //jal 
             RegDst   <=1'b0;
@@ -578,8 +606,10 @@ module mainCTL(OP,
             ALUSrc   <=1'b0;
             RegWrite <=1'b0;
             ALUOp    <= 2'b01;//jal J
-            jalsig <=1'b1;
+            jalsig <=1'b1;///////////////////////OK
             IALUCtl <= 4'b1111;//15
+            SIZE <= 2'b01;//X
+            lwusig <=1'b0;//X
         end
         else if(OP == 6'b000100) begin //beq
             RegDst   <=1'b0;
@@ -592,6 +622,9 @@ module mainCTL(OP,
             RegWrite <=1'b0;
             ALUOp    <= 2'b01;//beq 01->X
             IALUCtl <= 4'b1111;//15
+            SIZE <= 2'b01;//X
+            lwusig <=1'b0;//X
+            jalsig <= 1'b0;
         end        
         else if(OP == 6'b000101) begin //bne
             RegDst   <=1'b0;
@@ -604,6 +637,9 @@ module mainCTL(OP,
             RegWrite <=1'b0;
             ALUOp    <= 2'b01;//bne 01->X
             IALUCtl <= 4'b1111;//15
+            SIZE <= 2'b01;//X
+            lwusig <=1'b0;//X
+            jalsig <= 1'b0;
         end        
         else if(OP == 6'b000110) begin //blez
             RegDst   <=1'b0;
@@ -616,6 +652,9 @@ module mainCTL(OP,
             RegWrite <=1'b0;
             ALUOp    <= 2'b01;//blez 01->X
             IALUCtl <= 4'b1111;//15
+            SIZE <= 2'b01;//X
+            lwusig <=1'b0;//X
+            jalsig <= 1'b0;
         end        
         else if(OP == 6'b000111) begin //bgtz
             RegDst   <=1'b0;
@@ -628,6 +667,9 @@ module mainCTL(OP,
             RegWrite <=1'b0;
             ALUOp    <= 2'b01;//bgtz 01->X
             IALUCtl <= 4'b1111;//15
+            SIZE <= 2'b01;//X
+            lwusig <=1'b0;//X
+            jalsig <= 1'b0;
         end
         //highorder "001xxx"
         //beq,bne ,blez,bgtz is "bew_jumpctl.v"
@@ -645,6 +687,9 @@ module mainCTL(OP,
             RegWrite <=1'b1;
             ALUOp    <=2'b01;
             IALUCtl <= 4'b0010;//same add 2
+            SIZE <= 2'b01;//X
+            lwusig <=1'b0;//X
+            jalsig <= 1'b0;
         end        
         else if(OP == 6'b001001) begin //addiu hugou
             RegDst   <=1'b1;
@@ -656,7 +701,10 @@ module mainCTL(OP,
             ALUSrc   <=1'b1;//I
             RegWrite <=1'b1;
             ALUOp    <=2'b01;
-            IALUCtl <= 4'b0010;//same add 2     
+            IALUCtl <= 4'b0010;//same add 2 
+            SIZE <= 2'b01;//X
+            lwusig <=1'b0;//X
+            jalsig <= 1'b0;    
         end        
         else if(OP == 6'b001010) begin //slti
             RegDst   <=1'b1;
@@ -669,6 +717,9 @@ module mainCTL(OP,
             RegWrite <=1'b1;
             ALUOp    <=2'b01;
             IALUCtl <= 4'b0111;//same slt 7
+            SIZE <= 2'b01;//X
+            lwusig <=1'b0;//X
+            jalsig <= 1'b0;
         end        
         else if(OP == 6'b001011) begin //sltiu
             RegDst   <=1'b1;
@@ -680,7 +731,10 @@ module mainCTL(OP,
             ALUSrc   <=1'b1;//I
             RegWrite <=1'b1;
             ALUOp    <=2'b01;
-            IALUCtl <= 4'b0111;//same slt 7     
+            IALUCtl <= 4'b0111;//same slt 7    
+            SIZE <= 2'b01;//X
+            lwusig <=1'b0;//X
+            jalsig <= 1'b0; 
         end
         ////
         else if(OP == 6'b001100) begin //andi 0 kakutyou?????
@@ -694,6 +748,9 @@ module mainCTL(OP,
             RegWrite <=1'b1;
             ALUOp    <=2'b01;
             IALUCtl <= 4'b0000;//same and 0
+            SIZE <= 2'b01;//X
+            lwusig <=1'b0;//X
+            jalsig <= 1'b0;
         end        
         else if(OP == 6'b001101) begin //ori 0 kakuryou????
             RegDst   <=1'b1;
@@ -706,6 +763,9 @@ module mainCTL(OP,
             RegWrite <=1'b1;
             ALUOp    <=2'b01;
             IALUCtl <= 4'b0001;//same or 1
+            SIZE <= 2'b01;//X
+            lwusig <=1'b0;//X
+            jalsig <= 1'b0;
         end        
         else if(OP == 6'b001110) begin //xori 0 kakutyou?????
             RegDst   <=1'b1;
@@ -718,6 +778,9 @@ module mainCTL(OP,
             RegWrite <=1'b1;
             ALUOp    <=2'b01;
             IALUCtl <= 4'b0011;//same xor 3
+            SIZE <= 2'b01;//X
+            lwusig <=1'b0;//X
+            jalsig <= 1'b0;
         end   
         ////
         else if(OP == 6'b001111) begin //lui
@@ -731,6 +794,9 @@ module mainCTL(OP,
             RegWrite <=1'b1;
             ALUOp    <=2'b01;
             IALUCtl <= 4'b1101;//lui 13
+            SIZE <= 2'b01;//X
+            lwusig <=1'b0;//X
+            jalsig <= 1'b0;
         end
 
         /*
@@ -752,6 +818,7 @@ module mainCTL(OP,
             IALUCtl <= 4'b1111;//15
             SIZE <=2'b10;
             lwusig <=1'b0;
+            jalsig <= 1'b0;
         end        
         else if(OP == 6'b100001) begin //lh??????
             RegDst   <=1'b0;
@@ -766,6 +833,7 @@ module mainCTL(OP,
             IALUCtl <= 4'b1111;//15
             SIZE <=2'b01;
             lwusig <=1'b0;
+            jalsig <= 1'b0;
         end
         //100,010
         else if(OP == 6'b100011) begin //lw //OK
@@ -781,6 +849,7 @@ module mainCTL(OP,
             IALUCtl <= 4'b1111;//15
             SIZE <=2'b00;
             lwusig <=1'b0;
+            jalsig <= 1'b0;
         end        
         else if(OP == 6'b100100) begin //lbu?????????
             RegDst   <=1'b0;
@@ -795,6 +864,7 @@ module mainCTL(OP,
             IALUCtl <= 4'b1111;//15
             SIZE <=2'b10;
             lwusig <=1'b1;
+            jalsig <= 1'b0;
         end
         else if(OP == 6'b100101) begin //lhu?????????
             RegDst   <=1'b0;
@@ -809,6 +879,7 @@ module mainCTL(OP,
             IALUCtl <= 4'b1111;//15
             SIZE <=2'b01;
             lwusig <=1'b1;
+            jalsig <= 1'b0;
         end
 
         //highorder "101xxx"
@@ -825,6 +896,7 @@ module mainCTL(OP,
             IALUCtl <= 4'b1111;//15
             SIZE <=2'b10;
             lwusig <=1'b0;//X
+            jalsig <= 1'b0;
         end
         else if(OP == 6'b101001) begin //sh
             RegDst   <=1'b0;//X
@@ -839,6 +911,7 @@ module mainCTL(OP,
             IALUCtl <= 4'b1111;//15
             SIZE <= 2'b01;
             lwusig <=1'b0;//X
+            jalsig <= 1'b0;
         end
         else if(OP == 6'b101011) begin //sw //OK
             RegDst   <=1'b0;//X
@@ -853,6 +926,65 @@ module mainCTL(OP,
             IALUCtl <= 4'b1111;//15
             SIZE <= 2'b00;
             lwusig <=1'b0;//X
+            jalsig <= 1'b0;
         end
     end
 endmodule
+
+module ctrlmux(
+    input inRegDst,inBranch,inMemRead,inMemtoReg,inMemWrite,inALUSrc,inRegWrite,
+    input injalsig,
+    input [3:0] inIALUCtl,
+    input [1:0] inALUOp,inJump,
+    input inlwusig,
+    input [1:0]inSIZE,
+
+    input zerosig,
+
+    output reg outRegDst,outBranch,outMemRead,outMemtoReg,outMemWrite,outALUSrc,outRegWrite,
+    output reg outjalsig,
+    output reg[3:0] outIALUCtl,
+    output reg[1:0]outALUOp,outJump,
+    output reg outlwusig,
+    output reg [1:0] outSIZE
+);
+
+    always @(inRegDst,inBranch,inMemRead,inMemtoReg,inMemWrite,inALUSrc,inRegWrite,
+            injalsig,inIALUCtl,
+            inALUOp,inJump,
+            inlwusig,inSIZE,zerosig) begin
+        if(zerosig)begin
+            outRegDst<=1'b0;
+            outBranch<=1'b0;
+            outMemRead<=1'b0;
+            outMemtoReg<=1'b0;
+            outMemWrite<=1'b0;
+            outALUSrc<=1'b0;
+            outRegWrite<=1'b0;
+
+            outjalsig<=1'b0;
+            outIALUCtl<=4'b0;
+            outALUOp<=2'b01;//?????01 is ALUCTL don't output 
+            outJump<=2'b00;
+            outlwusig<=1'b0;
+            outSIZE<=1'b0;
+        end
+        else begin
+            outRegDst<=inRegDst;
+            outBranch<=inBranch;
+            outMemRead<=inMemRead;
+            outMemtoReg<=inMemtoReg;
+            outMemWrite<=inMemWrite;
+            outALUSrc<=inALUSrc;
+            outRegWrite<=inRegWrite;
+
+            outjalsig<=injalsig;
+            outIALUCtl<=inIALUCtl;
+            outALUOp<=inALUOp;//?????01 is ALUCTL don't output 
+            outJump<=inJump;
+            outlwusig<=inlwusig;
+            outSIZE<=inSIZE;
+        end
+    end
+endmodule
+
