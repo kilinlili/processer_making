@@ -1,15 +1,19 @@
 module id1(
     input  [31:0] thirtytwo,//from IFIDpipeline
+    input [31:0] frompcadd4,//from IFIDpipeline
+    output [31:0] toandlinkorder,//assign this = frompcadd4 ---->to pipeline
+    output [31:0] jumpaddress,//in wire 28bit & 4bit = 32bits ->output IFstage
+
     output [4:0] toEXRd,
     output [4:0] toEXRs,
     output [4:0] toEXRt,
     output [4:0] toshamt,
     /*32bits main data*/
 
-    input EXMEMRegWrite,EXMEMMemread,
-    input MEMWBRegWrite,MEMWBMemread,
-    input [4:0]EXMEMRegisterRdRt,MEMWBRegisterRt,
-    //input [4:0]IFIDRegisterRs,IFIDRegisterRt
+    //input EXMEMREGWRITE-OK //input EXMEMMEMREAD =>OK
+    input MEMWBRegWrite,
+    input [4:0] MEMWBRegisterRt,//input EXMEMREGISTERRDRT->OK
+    //wire in [4:0]IFIDRegisterRs,IFIDRegisterRt
     /*forwarding_unit2*/
 
     output Immout,
@@ -22,11 +26,11 @@ module id1(
     /*register*/
     input [4:0] writeregi,//& wire IFIDRs & wire IFIDRt
     input [31:0] writeregidata,
-    input WBRegwrite,
+    input WBRegwrite,//
     //out:wire fromRegRs,fromRegRt
     /*register*/
 
-    input [31:0] tobranchaddB,//from 2bitleft & from IFID pipeline(this!)  
+    //from 2bitleft & from IFID pipeline(this!)<-input frompcadd4
     output [31:0] branchaddanswer,//from branchadd IFstage's mux data;
     //adder.v(branchadd)
 
@@ -63,14 +67,16 @@ module id1(
     output IFIDWRITE,PCWRITE// & wire out ctrlmux 
     /*harzard*/
 
-
+//output:30 OK ! my figure is same too!
+//input:16 OK ! my figure is same too! 
 );
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    wire [5:0]IFIDop = thirtytwo[31:26];
+    wire [5:0]IFIDop = thirtytwo[31:26];//Q1
     wire [4:0]IFIDRd = thirtytwo[15:11];//-->to for2 & to pipeline(output toEXRd) 
     wire [4:0]IFIDRs = thirtytwo[25:21];//-->to for2 & to pipeline(output toEXRs) & register
     wire [4:0]IFIDRt = thirtytwo[20:16];//-->to for2 & to pipeline(output toEXRt) & register 
     wire [4:0]IFIDsh = thirtytwo[10: 6];//-->to pipeline --> EXstage shamtmux --> ALU
+    wire [25:0]IFIDtwentysix = thirtytwo[25:0];//-->to 2bitleft to jump//out is wire "nohead4"
     //rf32 is registerfile
     wire [1:0]forc,ford;
     //forwarding unit2 
@@ -103,19 +109,23 @@ module id1(
     // next is pipeline ,so  assign go~ (sum 10line)
     wire zerosignal;//---------------------------------------------------->from hazard to ctrlmux 
     /*CTRLmux out to pipeline*/
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
+    wire [27:0] nohead4;
+    //2bit_leftjump.v
+    wire [3:0] head4 = frompcadd4[31:28];//Q1
+    //from IFIDpipeline,PC+4[31:28] to jhead32.v//
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //Q2
     assign toEXRd = thirtytwo[15:11];//----->to pipeline 
     assign toEXRs = thirtytwo[25:21];//----->to pipeline
     assign toEXRt = thirtytwo[20:16];//----->to pipeline //2 line? --> 1line change OK
     assign toshamt= thirtytwo[10:6]; //----->to pipeline  // or IFIDsh OK
+    assign toandlinkorder = frompcadd4;//----------------------------->to pipeline
 
     forwarding2 forward2(
         .ForwardC(forc),.ForwardD(ford),//to forwardc & fowardd
-        .EX_MEM_RegWrite(EXMEMRegWrite),.EX_MEM_Memread(EXMEMMemread),
-        .MEM_WB_RegWrite(MEMWBRegWrite),.MEM_WB_Memread(MEMWBMemread),
-        .EX_MEM_RegisterR(EXMEMRegisterRdRt),.MEM_WB_RegisterRt(MEMWBRegisterRt),
+        .EX_MEM_RegWrite(EXMEMREGWRITE),.EX_MEM_Memread(EXMEMMEMREAD),
+        .MEM_WB_RegWrite(MEMWBRegWrite),
+        .EX_MEM_RegisterR(EXMEMREGISTERRDRT),.MEM_WB_RegisterRt(MEMWBRegisterRt),
         .IF_ID_RegisterRs(IFIDRs),.IF_ID_RegisterRt(IFIDRt)
     );
     expand expand1632(
@@ -155,7 +165,8 @@ module id1(
     );
 
     adder branchadd(
-        .data1(tobranchaddA),.data2(tobranchaddB),.adder_out(branchaddanswer)///////////////////////////////////////////////////////???????????????????????????????????????
+        .data1(tobranchaddA),.data2(frompcadd4),//data1 is from 2bitleft ,data2 is from IFIDPIPELINE
+        .adder_out(branchaddanswer)//
     );
 
     beqjump beqjumpctrl(
@@ -238,9 +249,15 @@ module id1(
         .IF_ID_RegisterRs(IFIDRs),.IF_ID_RegisterRt(IFIDRt),//wire in 
         .branch(toBranch)//wire in
     );
-
     //2bit_left_jump
+    twobitljump tojumpshift(
+        .A(IFIDtwentysix),.B(nohead4)//A:in,B:out
+    );
 
+    jhead tojump32bits(
+        .frompc(head4),.twei(nohead4),// in 4bit head4 ,28bit nohead
+        .out(jumpaddress)//--------------------------------------------------------->to IFstage!
+    );
 
 
 endmodule
@@ -256,31 +273,34 @@ endmodule
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 module forwarding2(ForwardC,ForwardD,
-    EX_MEM_RegWrite,EX_MEM_Memread,
-    MEM_WB_RegWrite,MEM_WB_Memread,
-    EX_MEM_RegisterR,MEM_WB_RegisterRt,
-    IF_ID_RegisterRs,IF_ID_RegisterRt
+EX_MEM_RegWrite,EX_MEM_Memread,//input 
+MEM_WB_RegWrite,//input
+EX_MEM_RegisterR,MEM_WB_RegisterRt,//input
+IF_ID_RegisterRs,IF_ID_RegisterRt//wire in
 );
+    //in:6,out:2
+    //beq for
 
-    input  EX_MEM_RegWrite,EX_MEM_Memread,MEM_WB_RegWrite,MEM_WB_Memread;
+    input  EX_MEM_RegWrite,EX_MEM_Memread,MEM_WB_RegWrite;
     input [4:0] EX_MEM_RegisterR,MEM_WB_RegisterRt/*lw*/;
     input [4:0] IF_ID_RegisterRs,IF_ID_RegisterRt; 
 
     output [1:0] ForwardC,ForwardD;
 
-    assign ForwardC=forward(EX_MEM_RegWrite,EX_MEM_Memread,MEM_WB_RegWrite,MEM_WB_Memread, EX_MEM_RegisterR/*RdRt*/,MEM_WB_RegisterRt,IF_ID_RegisterRs);
-    assign ForwardD=forward(EX_MEM_RegWrite,EX_MEM_Memread,MEM_WB_RegWrite,MEM_WB_Memread, EX_MEM_RegisterR/*RdRt*/,MEM_WB_RegisterRt,IF_ID_RegisterRt);
+    assign ForwardC=forward(EX_MEM_RegWrite,EX_MEM_Memread,MEM_WB_RegWrite, EX_MEM_RegisterR/*RdRt*/,MEM_WB_RegisterRt,IF_ID_RegisterRs);
+    assign ForwardD=forward(EX_MEM_RegWrite,EX_MEM_Memread,MEM_WB_RegWrite, EX_MEM_RegisterR/*RdRt*/,MEM_WB_RegisterRt,IF_ID_RegisterRt);
 
     function [1:0] forward;
-        input  EX_MEM_RegWrite,EX_MEM_Memread,MEM_WB_RegWrite,MEM_WB_Memread;
+        input  EX_MEM_RegWrite,EX_MEM_Memread,MEM_WB_RegWrite;
         input [4:0] EX_MEM_RegisterR,MEM_WB_RegisterRt/*lw*/;
         input [4:0] IF_ID_RegisterR;
 
         if(EX_MEM_RegWrite & (EX_MEM_Memread==0) & ((EX_MEM_RegisterR == IF_ID_RegisterR))) 
-            //add-1st-beq OK//addi-1st-beq OK
+            //add-1st-beq OK
+            //addi-1st-beq OK
             forward = 2'b10;
-        else if(MEM_WB_RegWrite & EX_MEM_Memread & (MEM_WB_RegisterRt == IF_ID_RegisterR) &
-         ~(EX_MEM_RegWrite & (EX_MEM_Memread==0) & ((EX_MEM_RegisterR == IF_ID_RegisterR))))
+        else if(MEM_WB_RegWrite & EX_MEM_Memread & (MEM_WB_RegisterRt == IF_ID_RegisterR) & 
+        ~(EX_MEM_RegWrite & (EX_MEM_Memread==0) & ((EX_MEM_RegisterR == IF_ID_RegisterR))))
             //lw-2st-beq 
             forward = 2'b01;
         else
@@ -1137,4 +1157,15 @@ module twobitljump(
         output[27:0] B
 );
         assign B = (A<<2);
+endmodule
+
+//jhead32.v
+module jhead(frompc,twei,out);
+    input [3:0]frompc;
+    input [27:0] twei;
+    output [31:0] out;
+
+    assign out[31:28]=frompc;
+    assign out[27:0]=twei;
+
 endmodule
