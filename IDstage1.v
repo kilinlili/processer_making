@@ -9,11 +9,12 @@ module id1(
     input EXMEMRegWrite,EXMEMMemread,
     input MEMWBRegWrite,MEMWBMemread,
     input [4:0]EXMEMRegisterRdRt,MEMWBRegisterRt,
-    ///////////////////////////////
     //input [4:0]IFIDRegisterRs,IFIDRegisterRt
-    //forwarding_unit2
+    /*forwarding_unit2*/
+
     output Immout,
     //16_32.v
+
     input [31:0] WBdata,MEMdata,//& fromRs(32),fromRt(32)
     output [31:0] fromC,fromD,
     //forwardC & forwardD
@@ -25,18 +26,17 @@ module id1(
     //out:wire fromRegRs,fromRegRt
     /*register*/
 
-    input [31:0] tobranchaddB,
-    output [31:0] branchaddanswer,
-    //from 2bitleft & from IFID pipeline(this!)  
-    //out:IFstage's mux;
-    //Is this "output"?????????????????????????????????????????????????????????
+    input [31:0] tobranchaddB,//from 2bitleft & from IFID pipeline(this!)  
+    output [31:0] branchaddanswer,//from branchadd IFstage's mux data;
+    //adder.v(branchadd)
 
-    output balandlink,//to pipeline
-    output [31:0] beqtojrjalr32,
-    //main_beq.v
+    output balandlink,//from main_beq to pipeline
+    output [31:0] beqtojrjalr32,//from main_beq to jrreg data
+    //main_beq.v 
     //beq_jumpCTL.v is all wire 
-    output toIFpcsrc,//to IFstage 
-    //iand
+
+    output toIFpcsrc,//from iand to IFstage's mux sig
+    output [1:0]toIFjump,//from ctrlmux to IFStage's mux data //assign toIFjump = (wire)toJump
 
     output [3:0]ALUctltopipe,
     output ALUopshamtsig,
@@ -44,15 +44,28 @@ module id1(
     output /*wire ??*/[1:0] ALUoprjump,
     /*
     input:wire fromCTRL's ALUop[1:0]
-    */
-    //ALUCTL.v
+    *///ALUCTL.v
+    //CTRL.v ->ctrlmux.v is  almost wire...
+    /*ctrl output to IDEXPIPELINE!!!!!!!!!!!!!!!*/
+    output goRegDst,goMemRead,goMemtoReg,goMemWrite,goALUSrc,goRegWrite,
+    output gojalsig,
+    output [3:0] goIALUCtl,
+    output golwusig,
+    output [1:0] goSIZE,
+    //ALL assign wo TUKAU!
+    /*ctrl output to IDEXPIPELINE!!!!!!!!!!!!!!!*/
 
-    output [1:0] toIFjump
-    //CTRL.v // almost wire
+    /*harzard*/
+    input IDEXMEMREAD,IDEXREGWRITE,
+    input [4:0] IDEXREGISTERRT,IDEXREGISTERRD,
+    input EXMEMREGWRITE,EXMEMMEMREAD,
+    input [4:0] EXMEMREGISTERRDRT,
+    output IFIDWRITE,PCWRITE// & wire out ctrlmux 
+    /*harzard*/
 
 
 );
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     wire [5:0]IFIDop = thirtytwo[31:26];
     wire [4:0]IFIDRd = thirtytwo[15:11];//-->to for2 & to pipeline(output toEXRd) 
     wire [4:0]IFIDRs = thirtytwo[25:21];//-->to for2 & to pipeline(output toEXRs) & register
@@ -71,7 +84,7 @@ module id1(
     wire [3:0] beqjumpcode;//from beqjumpctl to main beq
     wire tobeqand;//from main_beq to iand
 
-    /*CTRL wires*/
+    /*CTRL wires to  ctrlmux*/
     wire CTRLRegDst,CTRLBranch,CTRLMemRead,CTRLMemtoReg,CTRLMemWrite,CTRLALUSrc,CTRLRegWrite;
     wire CTRLjalsig;
     wire [3:0] CTRLIALUCtl;
@@ -80,7 +93,18 @@ module id1(
     wire [1:0] CTRLSIZE;
     /*CTRL wires*/
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    /*CTRLmux out to pipeline*/
+    wire toRegDst,toBranch,toMemRead,toMemtoReg,toMemWrite,toALUSrc,toRegWrite;
+    wire tojalsig;
+    wire [3:0] toIALUCtl;
+    wire [1:0] toALUOp,toJump;//toJump is output //toALUOp & toJump & toBranch is not pipeline 
+    wire tolwusig;
+    wire [1:0] toSIZE;
+    // next is pipeline ,so  assign go~ (sum 10line)
+    wire zerosignal;//---------------------------------------------------->from hazard to ctrlmux 
+    /*CTRLmux out to pipeline*/
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     assign toEXRd = thirtytwo[15:11];//----->to pipeline 
     assign toEXRs = thirtytwo[25:21];//----->to pipeline
@@ -142,7 +166,7 @@ module id1(
     mainbeq i_mainbeq(
         .fromreg1(Ctobeqandpipe)/*32*/,.fromreg2(Dtobeqandpipe)/*32bit*/,.ctlbeq(beqjumpcode)/*6bit in*/,
         .branchin(tobeqand),.alout(balandlink),//wire:tobeqand -> iand(R)//output balandlink
-        .jrre(beqtojrjalr32)////////////////////////////////////////////////////////?????????????????????????????????????????????????????????????/////32bit jump saki data
+        .jrre(beqtojrjalr32)//32bit jump saki data
     );
     
     
@@ -157,17 +181,65 @@ module id1(
         .lwusig(CTRLlwusig),.SIZE(CTRLSIZE)
     );
 
+    ctrlmux i_ctlmux(
+        .inRegDst(CTRLRegDst),.inBranch(CTRLBranch),.inMemRead(CTRLMemRead),.inMemtoReg(CTRLMemtoReg),.inMemWrite(CTRLMemWrite),.inALUSrc(CTRLALUSrc),.inRegWrite(CTRLRegWrite),
+        .injalsig(CTRLjalsig),
+        .inIALUCtl(CTRLIALUCtl),
+        .inALUOp(CTRLALUOp),
+        .inJump(CTRLJump),
+        .inlwusig(CTRLlwusig),.inSIZE(CTRLSIZE),
+        //input
+        .zerosig(zerosignal),// ===================================> input wire zerosignal
+        //output 
+        .outRegDst(toRegDst),.outBranch(toBranch)/*iand's L*/,.outMemRead(toMemRead),.outMemtoReg(toMemtoReg),.outMemWrite(toMemWrite),.outALUSrc(toALUSrc),.outRegWrite(toRegWrite),
+        .outjalsig(tojalsig),
+        .outIALUCtl(toIALUCtl),
+        .outALUOp(toALUOp),
+        .outJump(toJump),
+        .outlwusig(tolwusig),.outSIZE(toSIZE)
+    );
+    
+    assign toIFjump = toJump;//from ctrlmux to IFstage's jmlt.v 's jump
+    //----------------------------------------------------------------------------------------------------------->to pipeline
+    assign goRegDst  = toRegDst;
+    assign goMemRead = toMemRead;
+    assign goMemtoReg= toMemtoReg;
+    assign goMemWrite= toMemWrite;
+    assign goALUSrc  = toALUSrc;
+    assign goRegWrite= toRegWrite;
+    assign gojalsig  = tojalsig;
+    assign goIALUCtl = toIALUCtl;
+    assign golwusig  = tolwusig;
+    assign goSIZE    = toSIZE;
+    //sum : 10 line ====> OK
+    //----------------------------------------------------------------------------------------------------------->to pipeline
 
-    ALUControl iALU(
-        .ALUOp(),.FuncCode(aluopandbeqjumpfunccode),//wire input
+    ALUControl iALUctl(
+        .ALUOp(toALUOp),.FuncCode(aluopandbeqjumpfunccode),//wire input
         .ALUCtl(ALUctltopipe),.jalrsig(ALUopjalrsig),.shamtsig(ALUopshamtsig),//-------------------------------------------------output; to pipeline 
         .rjump(ALUoprjump)//----------------------------------------------------------------------------------------output ->IFstage
     );
-    iand nameand(
-        .left(),.right(tobeqand),
-        .ans(toIFpcsrc)//output OK ??
+    iand andtoIFstage(
+        .left(toBranch),.right(tobeqand),
+        .ans(toIFpcsrc)//output OK 
+    );
+    hazard mainhazard(
+        .muxzero(zerosignal),//wire out //to crtlmux
+        .pcwrite(PCWRITE),//output //to userpc
+        .IF_IDwrite(IFIDWRITE),//output //to ifidregister 
+
+        .ID_EX_MemRead(IDEXMEMREAD),.ID_EX_Regwrite(IDEXREGWRITE),//input 
+        .ID_EX_RegisterRt(IDEXREGISTERRT),//input
+        .ID_EX_RegisterRd(IDEXREGISTERRD),//input
+
+        .EX_MEM_Regwrite(EXMEMREGWRITE),.EX_MEM_Memread(EXMEMMEMREAD),//input
+        .EX_MEM_RegisterRt(EXMEMREGISTERRDRT),//input
+
+        .IF_ID_RegisterRs(IFIDRs),.IF_ID_RegisterRt(IFIDRt),//wire in 
+        .branch(toBranch)//wire in
     );
 
+    //2bit_left_jump
 
 
 
@@ -538,7 +610,7 @@ module mainCTL(OP,
     ALUOp,Jump,
     lwusig,
     SIZE
-    );
+);
     //beq=Branch MemRead=lw MemWrite=sw
     input [31:26] OP; //head 6bit
     output reg RegDst,Branch,MemRead,MemtoReg,MemWrite,ALUSrc,RegWrite;
@@ -988,3 +1060,81 @@ module ctrlmux(
     end
 endmodule
 
+
+//HARZARD
+module hazard(muxzero,pcwrite,//out
+    IF_IDwrite,//out
+    ID_EX_MemRead,//out
+
+    ID_EX_RegisterRt,//input
+    ID_EX_RegisterRd,//input
+    ID_EX_Regwrite,//input
+    IF_ID_RegisterRs,//wire in
+    IF_ID_RegisterRt,//wire in
+    branch,//wire in
+    EX_MEM_Regwrite,EX_MEM_Memread,
+    EX_MEM_RegisterRt
+    );
+//in:4,out:3
+   
+    input ID_EX_MemRead,ID_EX_Regwrite;
+    input [4:0] ID_EX_RegisterRt/*lw*/,ID_EX_RegisterRd/*Rd*/,IF_ID_RegisterRs,IF_ID_RegisterRt;
+    input branch;
+
+    input EX_MEM_Regwrite,EX_MEM_Memread;
+    input [4:0] EX_MEM_RegisterRt;//==IFIDRegusterRs,Rt
+    // lw-1st-beq -->lw -2st-beq
+
+    output reg muxzero;
+    output reg pcwrite,IF_IDwrite;
+
+
+    always @(ID_EX_MemRead or ID_EX_Regwrite or ID_EX_RegisterRd or ID_EX_RegisterRt or 
+    IF_ID_RegisterRs or IF_ID_RegisterRt or branch or EX_MEM_Regwrite or 
+    EX_MEM_Memread or EX_MEM_RegisterRt) begin
+        if(branch & ID_EX_Regwrite & ID_EX_MemRead &  ((ID_EX_RegisterRt == IF_ID_RegisterRs) || (ID_EX_RegisterRt == IF_ID_RegisterRt))) begin
+            //lw-beq 1st
+            //not forward
+            pcwrite<= 1'b1;
+            IF_IDwrite <= 1'b1;//Reset
+            muxzero <= 1'b1;//1st
+        end
+        else if ((branch == 0) & ID_EX_Regwrite & ID_EX_MemRead &  ((ID_EX_RegisterRt == IF_ID_RegisterRs) || (ID_EX_RegisterRt == IF_ID_RegisterRt))) begin 
+            //lw-add(addi),
+            //lw-sw,
+            //forward1
+            pcwrite<= 1'b1;
+            IF_IDwrite <= 1'b1;//Reset
+            muxzero <= 1'b1;//1st
+        end
+        else if((branch == 0) & ID_EX_Regwrite & (ID_EX_MemRead == 0) & ((ID_EX_RegisterRt == IF_ID_RegisterRs) || (ID_EX_RegisterRt == IF_ID_RegisterRt))) begin
+            //add-beq//addi-bew
+            //for2
+            pcwrite<= 1'b1;
+            IF_IDwrite <= 1'b1;//Reset
+            muxzero <= 1'b1;//1st
+        end
+        else if (branch & EX_MEM_Regwrite & EX_MEM_Memread & ((EX_MEM_RegisterRt == IF_ID_RegisterRs) || (EX_MEM_RegisterRt == IF_ID_RegisterRt))) begin 
+            // lw-1st-beq -->lw -2st-beq
+            //for2
+            pcwrite<= 1'b1;
+            IF_IDwrite <= 1'b1;//1:Reset
+            muxzero <= 1'b1;
+        end
+        else begin 
+            pcwrite<= 1'b0;
+            IF_IDwrite <= 1'b0;
+            muxzero <= 1'b0;
+        end
+    end
+endmodule
+//other way
+    //assign muxzero = (ID_EX_MemRead & ( |(ID_EX_RegisterRt == IF_ID_RegisterRs) | (|(ID_EX_RegisterRt == IF_ID_RegisterRt))))? 1'b1: 1'b0;
+
+//2bit left shift jump
+module twobitljump(
+        input[25:0] A,
+        output[27:0] B
+);
+        assign B = (A<<2);
+endmodule
