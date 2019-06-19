@@ -66,7 +66,16 @@ module top1(
     );
     /*IF ----> pipeline*///----------------------------------------------------------------------------------------------------------------------------------------------------------->
     ifidpipe userifid(
-
+        /*input*/
+        .CLOCK(),.RESET(),
+        .IFIDWRITE(),//flush1
+        .FROMIFPC4(),
+        .FROMORDER(),
+        .IFFLASH(),
+        /*input*/
+        /*output*/
+        .TOADD(),.TOMAINORDER()
+        /*output*/
     );
     /*pipeline ---->ID */
     id1 idmodule(
@@ -151,8 +160,44 @@ module top1(
     );
     /*ID ---->pipeline*///-------------------------------------------------------------------------------------------------------------------------------------------->
     idexpipe useridex(
+        .CLOCK(),.RESET(),
+        //
+        .inRegDst(),.inMemRead(),.inMemtoReg(),.inMemWrite(),.inALUSrc(),.inRegWrite(),
+        .injalsig(),
+        .inIALUCtl(),
+        .inlwusig(),
+        .inSIZE(),
+        /*from ctrlmux(CTRL),10 lines*/
+        .injalrsig(),//11
+        .inALUctl(),//12
+        .inshamtsig(),//13
+        .inmainshamt(),//14
+        .inToandlinkorder(),//15
+        .inbalandlink(),//16
+        .infromC(),.infromD(),//17,18
+        .inImm(),//19
+        .intoEXRs(),.intoEXRt(),.intoEXRd(),//20,21,22
 
+        //---------------------------------
+
+        .IFIDoutRegDst(),.IFIDoutMemRead(),.IFIDoutMemtoReg(),.IFIDoutMemWrite(),
+        .IFIDoutALUSrc(),.IFIDoutRegWrite(),
+        .IFIDoutjalsig(),
+        .IFIDoutIALUCtl(),
+        .IFIDoutlwusig(),
+        .IFIDoutSIZE(),
+        //10
+        .IFIDoutjalrsig(),//11
+        .IFIDoutALUctl(),//12
+        .IFIDoutshamtsig(),//13
+        .IFIDoutmainshamt(),//14
+        .IFIDoutToandlinkorder(),//15
+        .IFIDoutbalandlink(),//16
+        .IFIDoutfromC(),.IFIDoutfromD(),//17,18
+        .IFIDoutImm(),//19
+        .IFIDouttoEXRs(),.IFIDouttoEXRt(),.IFIDouttoEXRd()//20,21,22
     );
+
     /*pipeline ----> EX*/
     ex1 exmodule(
         .IDEXREGISTERRT(),.IDEXREGISTERRD(),
@@ -182,7 +227,29 @@ module top1(
     );
     /*EX ---->pipeline*///---------------------------------------------------------------------------------------------------------------------------------------------->
     exmempipe userexmem(
+        .CLOCK(),.RESET(),
+        //
+        .fromMemRead(),.fromMemtoReg(),.fromMemWrite(),.fromRegWrite(),
+        .fromlwusig(),
+        .fromSIZE(),
+        /*CTRL 6lines*/
+        .fromPCadd(),//7
+        /*PC address*/
+        .fromALUans(),.fromforb(),//8,9
+        .fromANDLINK(),//10
+        .fromREGISTER(),//11
 
+        //------------/------------------------------------------>
+        
+        .GOMemRead(),.GOMemtoReg(),.GOMemWrite(),.GORegWrite(),
+        .GOlwusig(),
+        .GOSIZE(),
+        /*CTRL 6lines*/
+        .GOPCadd(),//7
+        /*PC address*/
+        .GOALUans(),.GOforb(),//8,9
+        .GOANDLINK(),//10
+        .GOREGISTER()//11
     );
     /*pipeline ----> MEM*/
     mem1 memmodule(
@@ -195,7 +262,29 @@ module top1(
     );
     /*MEM ----> pipeline*///--------------------------------------------------------------------------------------------------------------------------------------------->
     memwbpipe usermemwb(
+        .CLOCK(),.RESET(),
+        //
+        .inlastMEMTOREG(),.inlastREGWRITE(),
+        .inlastSIZE(),
+        .inlastLWSIG(),
+        /*CTRL 4lines */
+        .inlastlwans(),//5
+        .inlastPC(),//6
+        .inlastRform(),//7
+        .inlastandlinlsig(),//8
+        .inlastwherereg(),//9
+        //input 9lines + CLOCK RESET
 
+        //---------------------------------------->>>
+        .FINMEMTOREG(),.FINREGWRITE(),
+        .FINSIZE(),
+        .FINLWSIG(),
+        /*CTRL 4lines */
+        .FINlwans(),//5
+        .FINPC(),//6
+        .FINRform(),//7
+        .FINandlinlsig(),//8
+        .FINwherereg()//9
     );
     /*pipeline ----> WB*/
     wb1 wbmodule(
