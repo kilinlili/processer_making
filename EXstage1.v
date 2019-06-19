@@ -1,10 +1,10 @@
 module ex1(
-    input [4:0] ID_EX_RegisterRt,ID_EX_RegisterRd,
-    input Regdest,
+    input [4:0] IDEXREGISTERRT,IDEXREGISTERRD,
+    input REGDEST,
     //mux5.v //32register sitei
-    input [4:0] ID_EX_RegisterRs,//&ID_EX_RegisterRt 
-    input [4:0] EX_MEM_RegisterRdRt,MEM_WB_RegisterRdRt,
-    input EX_MEM_RegWrite,MEM_WB_RegWrite,
+    input [4:0] IDEXREGISTERRS,//&IDEXREGISTERRT
+    input [4:0] EXMEMREGISTERRDRT,MEMWBREGISTERRDRT,
+    input EXMEMREGWRITE,MEMWBREGWRITE,
     //temp_FORWARDING_UNIT1.v//FORWARDING_UNIT1.v
     input jalsig,jalrsig,balal,
     //allsum.v
@@ -14,14 +14,14 @@ module ex1(
     input shamtsignal,
     //shamt
     input [31:0] iformat,
-    input ALUsrc,
+    input ALUSRC,
     //alusrcmux 
     input [3:0]fromALUctl,
     input [3:0]fromIALUctl,
     ////////////////////////////////////
     output [31:0]answer,
-    output alink,
-    output [4:0] Register,
+    output toANDLINK,//-------------->to pipeline
+    output [4:0] topipereg5,
     output [31:0]fboutpipe
     //ALU
 );
@@ -30,46 +30,48 @@ module ex1(
     /*wire call*/
     wire [4:0] rtrd;//muxfive
     wire [1:0] forA,forB;//forwarding1
-    wire anlink,muxsig;//allsum//alink -> pipeline//////////////////////////////
-    wire [4:0]goline; //-> pipeline/////////////////////////////////////////////
+    wire anlink;
+    wire muxsig;//allsum
+    //wire [4:0]goline; //-> pipeline//direct!
     /*wire call*/
 
     /*wire call*/
     wire [31:0] faout,fbout;//forA out & forB out //////////////////////////////
     wire [31:0] toALUA; //shamtmux.v out
     wire [31:0] toALUB; //ALUsrcmux out 
-    wire [31:0] answerwire;/////////////////////////////////////////////////////
+    //wire [31:0] answerwire;//direct!
     /*wire call*/
 
 ////////////////////////////////////////////////////////////////////////////
 
 /*fo to pipeline */
-    assign answer = answerwire;
-    assign alink  = anlink;
-    assign Register = goline;
+    //assign answer = answerwire;//direct!
+    //assign alink  = anlink;
+    //assign Register = goline;
     assign fboutpipe = fbout;
 /////////////////////////////////////////////////
 
     muxfive muxreg5(
-        .data1(ID_EX_RegisterRt),
-        .data2(ID_EX_RegisterRd),
-        .signal(Regdest),
+        .data1(IDEXREGISTERRT),
+        .data2(IDEXREGISTERRD),
+        .signal(REGDEST),
         .out(rtrd)
     );
     forwarding1 forwa1(
-        .ID_EX_RegisterRs(ID_EX_RegisterRs),.ID_EX_RegisterRt(ID_EX_RegisterRt),
-        .EX_MEM_RegisterR(EX_MEM_RegisterRdRt),.MEM_WB_RegisterR(MEM_WB_RegisterRdRt),
-        .EX_MEM_RegWrite(EX_MEM_RegWrite),.MEM_WB_RegWrite(MEM_WB_RegWrite),
+        .ID_EX_RegisterRs(IDEXREGISTERRS),.ID_EX_RegisterRt(IDEXREGISTERRT),
+        .EX_MEM_RegisterR(EXMEMREGISTERRDRT),.MEM_WB_RegisterR(MEMWBREGISTERRDRT),
+        .EX_MEM_RegWrite(EXMEMREGWRITE),.MEM_WB_RegWrite(MEMWBREGWRITE),
         .ForwardA(forA),.ForwardB(forB)//->forA,forB 2bit
     );
     allsum alls(
         .jalsig(jalsig),.jalrsig(jalrsig),.balal(balal),
-        .andlink(anlink),.regictl(muxsig)
+        .andlink(toANDLINK),.regictl(muxsig)
         //alink goes pipeline
         //muxsig is mux signal
     );
     mux31 mux31(
-        .regi(rtrd),.signal(muxsig),.out(goline)
+        .regi(rtrd),.signal(muxsig),
+        .out(topipereg5)//------------>to pipeline 
     );
 
     fmux forwardingA(
@@ -86,13 +88,13 @@ module ex1(
     );
     //ALUsrc
     mux arusrcmux(
-        .data1(iformat),.data2(fbout),.signal(ALUsrc),
+        .data1(iformat),.data2(fbout),.signal(ALUSRC),
         .out(toALUB)
     );
     mainALU ALU(
         .ALUctl(fromALUctl),.IALUctl(fromIALUctl),
         .A(toALUA),.B(toALUB),
-        .ALUOut(answerwire)//to pipeline 
+        .ALUOut(answer)//to pipeline 
     );
 
     /*

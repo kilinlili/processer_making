@@ -23,7 +23,9 @@ module if1(
     output[31:0] IADRESS//------------->from pc to ordermem
     //output ACKI??????? 
     //input: 10 line //IFstage1.v's "input" is same my figure
-    //output: 4 line //IFstage1.v's "output" is same my figure(if ACKI ,+1 line output!)
+    //output: 4 line //IFstage1.v's "output" is same my figure
+    //(if ACKI ,+1 line output!)<------------------------------------(new!) not need! 
+
 
 );
 
@@ -68,6 +70,7 @@ module if1(
     /*order memory???*/
     assign MAINORDER = OUTDATA;//---->from ordermem to pipeline
     assign IADRESS = toaddordermem;//<---from pc to "out of IFstage"
+    
 
 
 endmodule
