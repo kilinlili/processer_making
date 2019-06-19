@@ -50,9 +50,4 @@ module memwbpipe(
             FINwherereg<=inlastwherereg;//9
         end
     end
-
-
-
-
-
 endmodule

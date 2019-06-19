@@ -16,7 +16,7 @@ module id1(
     //wire in [4:0]IFIDRegisterRs,IFIDRegisterRt
     /*forwarding_unit2*/
 
-    output Immout,
+    output [31:0] Immout,
     //16_32.v
 
     input [31:0] WBdata,MEMdata,//& fromRs(32),fromRt(32)

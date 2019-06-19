@@ -14,14 +14,12 @@ module if1(
     //assign this = addreturn
     input [31:0] BRANCHGO, //-->to mux.v
     
-    output [31:0] MAINORDER,//---------------->to pipeline
-
     output FLASHIF,//-------------------------->to pipeline
 
+    input [31:0] IDTORD,//from top input
+    output [31:0] IDTadd, //assign this = IDORD
+    output [31:0] IADADD //assign this = toaddordermem //to top output
     //--------------------------------------------------------------------
-    input [31:0] OUTDATA,//<-------from ordermem(out!) 
-    output[31:0] IADRESS//------------->from pc to ordermem
-    //output ACKI??????? 
     //input: 10 line //IFstage1.v's "input" is same my figure
     //output: 4 line //IFstage1.v's "output" is same my figure
     //(if ACKI ,+1 line output!)<------------------------------------(new!) not need! 
@@ -67,10 +65,9 @@ module if1(
     );
 
 
-    /*order memory???*/
-    assign MAINORDER = OUTDATA;//---->from ordermem to pipeline
-    assign IADRESS = toaddordermem;//<---from pc to "out of IFstage"
-    
+    /*order memory*/
+    assign IDTadd = IDTadd;//<---from pc to "out of IFstage"
+    assign IADADD = toaddordermem;
 
 
 endmodule

@@ -1,41 +1,64 @@
-module top1(
+module topuser(
     /*IFstage*/
     output [31:0] IAD,
-    input [31:0] IDT,
-    input ACKI,/////////////////
+    input [31:0] IDT,// --->ifmodule's "IDTORD"
+    input ACKI_n,
     /*IFstage*/
     /*MEMstage*/
     output [31:0] DAD,
     inout [31:0] DDT,//------------------------->input & output 
-    output MEWQ,
+    output MREQ,
     output WRITE,
     output [1:0] SIZE,
-    input ACKD,/////////////
+    input ACKD_n,
     /*MEMstage*/
     /*warikomi*/
-    input RESET,////////////////
-    input [2:0] OINT,/////////////
-    output IACK,/////////////////
+    input rst,
+    input [2:0] OINT_n,
+    output IACK_n,
     /*warikomi*/
-    input CLK //-------------->CLOCK!
+    input clk //-------------->CLOCK!
 );
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------
 //IFstage -> order mem & IFIDpipeline
 //from other stage's output ----------> IFstage & IFIDpipeline 
-    wire [31:0] BRANCHWIRE;//from (IDstage's) to IFstage's "input BRANCHGO" 
-
-
-
-
-//IFstage -> order mem & IFIDpipeline
-//from other stage's output ----------> IFstage & IFIDpipeline 
-//end
+    wire [31:0] BRANCHWIRE;//from "branchaddanswer" to"BRANCHGO" 
+    wire bbsig,rockpc;//from"toIFpcsrc"to"fromPCSRC" & from"PCWRITE"to"WRITEPC"
+    wire [31:0] jadjump,regijump;//from "jumpaddress" to "fromJJAL" & from "beqtojrjalr32" to "fromJRJALR"
+    wire [1:0] jadss,jregss;//from "toIFjump" to "fromJUMP" & from "ALUoprjump" to "fromRJUMP"
+    wire [31:0] addfour,CONORDER;//from"goifidpc4"to"???"&from"IDTadd"to"???"
+    wire flushss;//from"FLASHIF"to"???"
+    //
+    wire piperockif;// IDstage's harzard.v //from"IFIDWRITE"to"???"
 //--------------------------------------------------------------------------------------------------------------------------------------------------
-    
+//IFIDpipeline ---------------> IDstage 
+    wire [31:0] rowadd4,rowmainorder;//----->to IDstage input"frompcadd4"&"thirtytwo"
+//--------------------------------------------------------------------------------------------------------------------------------------------------
+//IDstage----------------->IDEXpipe
+    wire iiiRegDst,iiiMemRead,iiiMemtoReg,iiiMemWrite,iiiALUSrc,iiiRegWrite;
+    wire iiijalsig;
+    wire [3:0] iiiIALUCtl;
+    wire iiilwusig;
+    wire [1:0] iiiSIZE;//10!
+    //---uekara!!!!!!!
+    wire iiiALUopjalrsig;//11
+    wire [3:0] iiiALUctltopipe;//12
+    wire iiiALUopshamtsig;//13
+    wire [4:0] iiitoshamt;//14
+    wire [31:0] iiitoandlinkorder;//15
+    wire iiiballink;//16
+    wire [31:0] iiifromC,iiifromD,iiiImm;//17//18//19
+    wire [4:0] iiiRs,iiiRt,iiiRd;//20//21//22
+//IDstage----------------->IFstage
 
+//IDstage<----others
+    wire [4:0] ininMEMWBregisterR;//--------------------->forwarding2 & forwarding1 & writeREGISTER'slocation
+    wire ininMEMWBregwrite;//---------------------->forwarding2 & forwarding1 & REGISTERsignal
+    wire [31:0] ininMEMDATA,ininWBDATA;//------>forwardmuxs! A,B,C,D!!!//but, ininWBDATA is go to Registerdata
+//--------------------------------------------------------------------------------------------------------------------------------------------------
 
-
+//--------------------------------------------------------------------------------------------------------------------------------------------------
 
 
 
@@ -44,92 +67,92 @@ module top1(
 //--------------------------------------------------------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------------------------------------------------------
     if1 ifmodule(
-        .CLOCK(),.RESET(),//<from input!!!! 
-        .WRITEPC(),//
-        .fromJUMP(),.fromRJUMP(),
-        .fromJJAL(),.fromJRJALR(),//--->jmlt sig 2
-        //jmlt.v
-        .fromPCSRC(),
-        //to mux.v
+        .CLOCK(clk),.RESET(rst),//<from input!!!! 
+        .WRITEPC(rockpc),//from"PCWRITE"to"WRITEPC"
+        .fromJUMP(jadss),.fromRJUMP(jregss),//from "toIFjump" to "fromJUMP" & from "ALUoprjump" to "fromRJUMP"
+        .fromJJAL(jadjump),.fromJRJALR(regijump),//<--IDstage's "jumpaddress",//<--IDstage's "beqtojrjlr32"
+        .fromPCSRC(bbsig),//to mux.v
         //ALU4.v all wire 
-        .goifidpc4(), //-------------->to pipeline 
+        .goifidpc4(addfour), //-------------->to pipeline 
         //assign this = addreturn
-        .BRANCHGO(), //-->to mux.v
-    
-        .MAINORDER(),//---------------->to pipeline
+        .BRANCHGO(BRANCHWIRE), //->mux data1
 
-        .FLASHIF(),//-------------------------->to pipeline
+        .FLASHIF(flushss),//----------------->to pipeline
 
-    //--------------------------------------------------------------------
-        .OUTDATA(),//<-------from ordermem(out!) 
-        .IADRESS()//------------->from pc to ordermem
+        .IDTORD(IDT),//from top input
+        .IDTadd(CONORDER),//to ---------------> to pipeline 
+        .IADADD(IDT)//to top output
     );
     /*IF ----> pipeline*///----------------------------------------------------------------------------------------------------------------------------------------------------------->
     ifidpipe userifid(
         /*input*/
-        .CLOCK(),.RESET(),
-        .IFIDWRITE(),//flush1
-        .FROMIFPC4(),
-        .FROMORDER(),
-        .IFFLASH(),
+        .CLOCK(clk),.RESET(rst),
+        .IFIDWRITE(piperockif),//<--harzard's "IFIDWRITE"//namesame
+        .FROMIFPC4(addfour),
+        .FROMORDER(CONORDER),
+        .IFFLASH(flushss),//<---IFstage
         /*input*/
         /*output*/
-        .TOADD(),.TOMAINORDER()
+        .TOADD(rowadd4),//-->frompcadd4
+        .TOMAINORDER(rowmainorder)//-->thirtytwo
         /*output*/
     );
     /*pipeline ---->ID */
     id1 idmodule(
-        .thirtytwo(),//from IFIDpipeline
-        .frompcadd4(),//from IFIDpipeline
-        .toandlinkorder(),//assign this = frompcadd4 ---->to pipeline
-        .jumpaddress(),//in wire 28bit & 4bit = 32bits ->output IFstage
+        .thirtytwo(rowmainorder),//<--IFIDpipeline
+        .frompcadd4(rowadd4),//<--IFIDpipeline
+        .toandlinkorder(iiitoandlinkorder),//-->to pipeline
+        .jumpaddress(jadjump),//-->to IFstage
 
-        .toEXRd(),
-        .toEXRs(),
-        .toEXRt(),
-        .toshamt(),
+        .toEXRd(iiiRd),//-->to pipeline//22
+        .toEXRs(iiiRs),//--to pipeline//20
+        .toEXRt(iiiRt),//-->to pipeline//21
+        .toshamt(iiitoshamt),//-->to pipeline//14
         /*32bits main data*/
 
         //input EXMEMREGWRITE-OK //input EXMEMMEMREAD =>OK
-        .MEMWBRegWrite(),
-        .MEMWBRegisterRt(),//input EXMEMREGISTERRDRT->OK
+        .MEMWBRegWrite(ininMEMWBregwrite),
+        .MEMWBRegisterRt(ininMEMWBregisterR),
         //wire in [4:0]IFIDRegisterRs,IFIDRegisterRt
         /*forwarding_unit2*/
 
-        .Immout(),
+        .Immout(iiiImm),//19
         //16_32.v
 
-        .WBdata(),.MEMdata(),//& fromRs(32),fromRt(32)
-        .fromC(),.fromD(),
+        .WBdata(ininWBDATA),.MEMdata(ininMEMDATA),//<--32bits data
+        .fromC(iiifromC),.fromD(iiifromD),//--->to pipeline//17//18
         //forwardC & forwardD
 
 
         //from 2bitleft & from IFID pipeline(this!)<-input frompcadd4
-        .branchaddanswer(),//from branchadd IFstage's mux data;
+        .branchaddanswer(BRANCHWIRE),//---> IFstage's mux's data1
         //adder.v(branchadd)
 
-        .balandlink(),//from main_beq to pipeline
-        .beqtojrjalr32(),//from main_beq to jrreg data
+        .balandlink(iiiballink),//-->to pipeline//16
+        .beqtojrjalr32(regijump),//-->to IFstage
         //main_beq.v 
         //beq_jumpCTL.v is all wire 
 
-        .toIFpcsrc(),//from iand to IFstage's mux sig
-        .toIFjump(),//from ctrlmux to IFStage's mux data //assign toIFjump = (wire)toJump
+        .toIFpcsrc(bbsig),//-->to IFstage's
+        .toIFjump(jadss),//to IFStage 
 
-        .ALUctltopipe(),
-        .ALUopshamtsig(),
-        .ALUopjalrsig(),
-        .ALUoprjump(),
+        .ALUctltopipe(iiiALUctltopipe),//to pipeline //12
+        .ALUopshamtsig(iiiALUopshamtsig),//to pipeline//13
+        .ALUopjalrsig(iiiALUopjalrsig),//to pipeline//
+        .ALUoprjump(jregss),//to IFstage 
+        
         /*
         input:wire fromCTRL's ALUop[1:0]
         *///ALUCTL.v
         //CTRL.v ->ctrlmux.v is  almost wire...
+
         /*ctrl output to IDEXPIPELINE!!!!!!!!!!!!!!!*/
-        .goRegDst(),.goMemRead(),.goMemtoReg(),.goMemWrite(),.goALUSrc(),.goRegWrite(),
-        .gojalsig(),
-        .goIALUCtl(),
-        .golwusig(),
-        .goSIZE(),
+        .goRegDst(iiiRegDst),.goMemRead(iiiMemRead),.goMemtoReg(iiiMemtoReg),
+        .goMemWrite(iiiMemWrite),.goALUSrc(iiiALUSrc),.goRegWrite(iiiRegWrite),
+        .gojalsig(iiijalsig),
+        .goIALUCtl(iiiIALUCtl),
+        .golwusig(iiilwusig),
+        .goSIZE(iiiSIZE),//10!!!
         //ALL assign wo TUKAU!
         /*ctrl output to IDEXPIPELINE!!!!!!!!!!!!!!!*/
 
@@ -145,7 +168,7 @@ module top1(
     //input:16 OK ! my figure is same too! 
 
         /*register*/
-        .CLOCK(),.RESET(),
+        .CLOCK(clk),.RESET(rst),
         .WRITEADD(),//& wire IFIDRs & wire IFIDRt
         .DATAIN32(),
         .WBREGWRITE()
@@ -600,14 +623,12 @@ module if1(
     //assign this = addreturn
     input [31:0] BRANCHGO, //-->to mux.v
     
-    output [31:0] MAINORDER,//---------------->to pipeline
-
     output FLASHIF,//-------------------------->to pipeline
 
+    input [31:0] IDTORD,//from top input
+    output [31:0] IDTadd, //assign this = IDORD
+    output [31:0] IADADD //assign this = toaddordermem //to top output
     //--------------------------------------------------------------------
-    input [31:0] OUTDATA,//<-------from ordermem(out!) 
-    output[31:0] IADRESS//------------->from pc to ordermem
-    //output ACKI??????? 
     //input: 10 line //IFstage1.v's "input" is same my figure
     //output: 4 line //IFstage1.v's "output" is same my figure
     //(if ACKI ,+1 line output!)<------------------------------------(new!) not need! 
@@ -653,10 +674,9 @@ module if1(
     );
 
 
-    /*order memory???*/
-    assign MAINORDER = OUTDATA;//---->from ordermem to pipeline
-    assign IADRESS = toaddordermem;//<---from pc to "out of IFstage"
-    
+    /*order memory*/
+    assign IDTadd = IDTadd;//<---from pc to "out of IFstage"
+    assign IADADD = toaddordermem;
 
 
 endmodule
@@ -777,7 +797,7 @@ module id1(
     //wire in [4:0]IFIDRegisterRs,IFIDRegisterRt
     /*forwarding_unit2*/
 
-    output Immout,
+    output [31:0] Immout,
     //16_32.v
 
     input [31:0] WBdata,MEMdata,//& fromRs(32),fromRt(32)
