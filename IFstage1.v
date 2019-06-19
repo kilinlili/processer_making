@@ -15,9 +15,16 @@ module if1(
     input [31:0] BRANCHGO, //-->to mux.v
     
     output [31:0] MAINORDER,//---------------->to pipeline
-    output FLASHIF//-------------------------->to pipeline
-    //input: 9 line //IFstage1.v's "input" is same my figure
-    //output: 3 line //IFstage1.v's "output" is same my figure
+
+    output FLASHIF,//-------------------------->to pipeline
+
+    //--------------------------------------------------------------------
+    input [31:0] OUTDATA,//<-------from ordermem(out!) 
+    output[31:0] IADRESS//------------->from pc to ordermem
+    //output ACKI??????? 
+    //input: 10 line //IFstage1.v's "input" is same my figure
+    //output: 4 line //IFstage1.v's "output" is same my figure(if ACKI ,+1 line output!)
+
 );
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -28,8 +35,6 @@ module if1(
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-
-    /*order memory???*/
 
     fourALU fouradd(
         .A(toaddordermem),//wire in
@@ -54,7 +59,15 @@ module if1(
         .pcin(jmltans),.pcwrite(WRITEPC),//pcin is "wire in" 
         .pcout(toaddordermem)//wire out--->to memo & to ALU
     );
+    flushsum toflush(
+        .A(fromPCSRC),.B(fromJUMP),.C(fromRJUMP),//<<<-----from input direct 
+        .out(FLASHIF)//-------> to pipeline 
+    );
 
+
+    /*order memory???*/
+    assign MAINORDER = OUTDATA;//---->from ordermem to pipeline
+    assign IADRESS = toaddordermem;//<---from pc to "out of IFstage"
 
 
 endmodule
@@ -137,6 +150,17 @@ module mux(data1,data2,signal,out);
 endmodule
 
 //flushsum.v
+module flushsum(A,B,C,out);
+    input A;
+    input [1:0] B,C;
+    output out;
+    assign out = sum(A,B,C);
+    function sum;
+        input A;
+        input [1:0] B,C;
+        sum = A || (|B || |C);
+    endfunction
+endmodule
 
 
 //order mem?????
