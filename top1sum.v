@@ -20,6 +20,19 @@ module top1(
     input CLK //-------------->CLOCK!
 );
 
+//--------------------------------------------------------------------------------------------------------------------------------------------------
+//IFstage -> order mem & IFIDpipeline
+//from other stage's output ----------> IFstage & IFIDpipeline 
+    wire [31:0] BRANCHWIRE;//from (IDstage's) to IFstage's "input BRANCHGO" 
+
+
+
+
+//IFstage -> order mem & IFIDpipeline
+//from other stage's output ----------> IFstage & IFIDpipeline 
+//end
+//--------------------------------------------------------------------------------------------------------------------------------------------------
+    
 
 
 
@@ -27,18 +40,193 @@ module top1(
 
 
 
+//--------------------------------------------------------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------------------------------------------------------
+    if1 ifmodule(
+        .CLOCK(),.RESET(),//<from input!!!! 
+        .WRITEPC(),//
+        .fromJUMP(),.fromRJUMP(),
+        .fromJJAL(),.fromJRJALR(),//--->jmlt sig 2
+        //jmlt.v
+        .fromPCSRC(),
+        //to mux.v
+        //ALU4.v all wire 
+        .goifidpc4(), //-------------->to pipeline 
+        //assign this = addreturn
+        .BRANCHGO(), //-->to mux.v
+    
+        .MAINORDER(),//---------------->to pipeline
+
+        .FLASHIF(),//-------------------------->to pipeline
+
+    //--------------------------------------------------------------------
+        .OUTDATA(),//<-------from ordermem(out!) 
+        .IADRESS()//------------->from pc to ordermem
+    );
+    /*IF ----> pipeline*///----------------------------------------------------------------------------------------------------------------------------------------------------------->
+    ifidpipe userifid(
+
+    );
+    /*pipeline ---->ID */
+    id1 idmodule(
+        .thirtytwo(),//from IFIDpipeline
+        .frompcadd4(),//from IFIDpipeline
+        .toandlinkorder(),//assign this = frompcadd4 ---->to pipeline
+        .jumpaddress(),//in wire 28bit & 4bit = 32bits ->output IFstage
+
+        .toEXRd(),
+        .toEXRs(),
+        .toEXRt(),
+        .toshamt(),
+        /*32bits main data*/
+
+        //input EXMEMREGWRITE-OK //input EXMEMMEMREAD =>OK
+        .MEMWBRegWrite(),
+        .MEMWBRegisterRt(),//input EXMEMREGISTERRDRT->OK
+        //wire in [4:0]IFIDRegisterRs,IFIDRegisterRt
+        /*forwarding_unit2*/
+
+        .Immout(),
+        //16_32.v
+
+        .WBdata(),.MEMdata(),//& fromRs(32),fromRt(32)
+        .fromC(),.fromD(),
+        //forwardC & forwardD
 
 
+        //from 2bitleft & from IFID pipeline(this!)<-input frompcadd4
+        .branchaddanswer(),//from branchadd IFstage's mux data;
+        //adder.v(branchadd)
+
+        .balandlink(),//from main_beq to pipeline
+        .beqtojrjalr32(),//from main_beq to jrreg data
+        //main_beq.v 
+        //beq_jumpCTL.v is all wire 
+
+        .toIFpcsrc(),//from iand to IFstage's mux sig
+        .toIFjump(),//from ctrlmux to IFStage's mux data //assign toIFjump = (wire)toJump
+
+        .ALUctltopipe(),
+        .ALUopshamtsig(),
+        .ALUopjalrsig(),
+        .ALUoprjump(),
+        /*
+        input:wire fromCTRL's ALUop[1:0]
+        *///ALUCTL.v
+        //CTRL.v ->ctrlmux.v is  almost wire...
+        /*ctrl output to IDEXPIPELINE!!!!!!!!!!!!!!!*/
+        .goRegDst(),.goMemRead(),.goMemtoReg(),.goMemWrite(),.goALUSrc(),.goRegWrite(),
+        .gojalsig(),
+        .goIALUCtl(),
+        .golwusig(),
+        .goSIZE(),
+        //ALL assign wo TUKAU!
+        /*ctrl output to IDEXPIPELINE!!!!!!!!!!!!!!!*/
+
+        /*harzard*/
+        .IDEXMEMREAD(),.IDEXREGWRITE(),
+        .IDEXREGISTERRT(),.IDEXREGISTERRD(),
+        .EXMEMREGWRITE(),.EXMEMMEMREAD(),
+        .EXMEMREGISTERRDRT(),
+        .IFIDWRITE(),.PCWRITE(),// & wire out ctrlmux 
+        /*harzard*/
+
+    //output:30 OK ! my figure is same too!
+    //input:16 OK ! my figure is same too! 
+
+        /*register*/
+        .CLOCK(),.RESET(),
+        .WRITEADD(),//& wire IFIDRs & wire IFIDRt
+        .DATAIN32(),
+        .WBREGWRITE()
+        //wire in "Rs, Rt,"2line
+        //wire out"fromRs,fromRt"
+
+        /*register*/
+
+        //out:wire fromRegRs,fromRegRt
 
 
+    );
+    /*ID ---->pipeline*///-------------------------------------------------------------------------------------------------------------------------------------------->
+    idexpipe useridex(
 
+    );
+    /*pipeline ----> EX*/
+    ex1 exmodule(
+        .IDEXREGISTERRT(),.IDEXREGISTERRD(),
+        .REGDEST(),
+    //mux5.v //32register sitei
+        .IDEXREGISTERRS(),//&IDEXREGISTERRT
+        .EXMEMREGISTERRDRT(),.MEMWBREGISTERRDRT(),
+        .EXMEMREGWRITE(),.MEMWBREGWRITE(),
+    //temp_FORWARDING_UNIT1.v//FORWARDING_UNIT1.v
+        .jalsig(),.jalrsig(),.balal(),
+    //allsum.v
+        .fromRs(),.fromRt(),.fromMEMWB(),.fromEXMEM(),
+    //forA,forB
+        .fromshamt(),
+        .shamtsignal(),
+    //shamt
+        .iformat(),
+        .ALUSRC(),
+    //alusrcmux 
+        .fromALUctl(),
+        .fromIALUctl(),
+    ////////////////////////////////////
+        .answer(),
+        .toANDLINK(),//-------------->to pipeline
+        .topipereg5(),
+        .fboutpipe()
+    );
+    /*EX ---->pipeline*///---------------------------------------------------------------------------------------------------------------------------------------------->
+    exmempipe userexmem(
 
+    );
+    /*pipeline ----> MEM*/
+    mem1 memmodule(
+        .fromP_SIZE(),
+        .fromP_MEMWRITE(),
+        .fromP_MEMREAD(),
+        .toADDRESS(),
+        .WRITEDATA(),
+        .LOADDATA()
+    );
+    /*MEM ----> pipeline*///--------------------------------------------------------------------------------------------------------------------------------------------->
+    memwbpipe usermemwb(
 
-
+    );
+    /*pipeline ----> WB*/
+    wb1 wbmodule(
+        .fromplw(),
+        .LASTSIZE(),
+        .signLW(),
+    //lwunsigned.v // out is wire "EDITLOAD"
+        .frompaddANS(),
+        .frompMEMTOREG(),
+    //mux.v(lwRmux) --> out:wire LASTJUDGE
+        .ALINKPC(),
+        .LINKSIG(),
+        .GOREGDATA()
+    //mux(finmux) --> out: output GOREGDATA
+    //input:7 -->figure same
+    //output:1 -->figure same
+    );
 
 
 
 endmodule 
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------------------------------------------------------
 
 //PLR_IFID.v
 module ifidpipe(
@@ -2285,7 +2473,7 @@ endmodule
 ///////////////////////////////////////////////////////////////////
 //WBstage1.v 
 
-module we1(
+module wb1(
     input [31:0] fromplw,
     input[1:0] LASTSIZE,
     input signLW,
