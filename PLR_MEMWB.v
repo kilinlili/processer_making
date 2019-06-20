@@ -1,53 +1,78 @@
 module memwbpipe(
-    input CLOCK,RESET,
+    CLOCK,RESET,
     //
-    input inlastMEMTOREG,inlastREGWRITE,
-    input [1:0]inlastSIZE,
-    input inlastLWSIG,
+    MEM_WBinlastMEMTOREG,MEM_WBinlastREGWRITE,
+    MEM_WBinlastSIZE,
+    MEM_WBinlastLWSIG,
     /*CTRL 4lines */
-    input [31:0] inlastlwans,//5
-    input [31:0] inlastPC,//6
-    input [31:0] inlastRform,//7
-    input inlastandlinlsig,//8
-    input [4:0] inlastwherereg,//9
+    MEM_WBinlastlwans,//5
+    MEM_WBinlastPC,//6
+    MEM_WBinlastRform,//7
+    MEM_WBinlastandlinlsig,//8
+    MEM_WBinlastwherereg,//9
     //input 9lines + CLOCK RESET
 
     //---------------------------------------->>>
-    output reg FINMEMTOREG,FINREGWRITE,
-    output reg [1:0] FINSIZE,
-    output reg FINLWSIG,
+    MEM_WBoutMEMTOREG,MEM_WBoutREGWRITE,
+    MEM_WBoutSIZE,
+    MEM_WBoutLWSIG,
     /*CTRL 4lines */
-    output reg [31:0] FINlwans,//5
-    output reg [31:0] FINPC,//6
-    output reg [31:0] FINRform,//7
-    output reg FINandlinlsig,//8
-    output reg [4:0] FINwherereg//9
+    MEM_WBoutlwans,//5
+    MEM_WBoutPC,//6
+    MEM_WBoutRform,//7
+    MEM_WBoutandlinlsig,//8
+    MEM_WBoutwherereg//9
     //output 9lines 
 );
+    input CLOCK,RESET;
+    //
+    input MEM_WBinlastMEMTOREG,MEM_WBinlastREGWRITE;
+    input [1:0]MEM_WBinlastSIZE;
+    input MEM_WBinlastLWSIG;
+    /*CTRL 4lines */
+    input [31:0] MEM_WBinlastlwans;//5
+    input [31:0] MEM_WBinlastPC;//6
+    input [31:0] MEM_WBinlastRform;//7
+    input MEM_WBinlastandlinlsig;//8
+    input [4:0] MEM_WBinlastwherereg;//9
+    //input 9lines + CLOCK RESET
+
+    //---------------------------------------->>>
+    output reg MEM_WBoutMEMTOREG,MEM_WBoutREGWRITE;
+    output reg [1:0] MEM_WBoutSIZE;
+    output reg MEM_WBoutLWSIG;
+    /*CTRL 4lines */
+    output reg [31:0] MEM_WBoutlwans;//5
+    output reg [31:0] MEM_WBoutPC;//6
+    output reg [31:0] MEM_WBoutRform;//7
+    output reg MEM_WBoutandlinlsig;//8
+    output reg [4:0] MEM_WBoutwherereg;//9
+
+
     always@(posedge CLOCK or negedge RESET) begin
         if (RESET == 1'b0) begin
-            FINMEMTOREG<=0;
-            FINREGWRITE<=0;
-            FINSIZE<=0;
-            FINLWSIG<=0;
+            MEM_WBoutMEMTOREG<=0;
+            MEM_WBoutREGWRITE<=0;
+            MEM_WBoutSIZE<=0;
+            MEM_WBoutLWSIG<=0;
             /*CTRL 4lines */
-            FINlwans<=0;//5
-            FINPC<=0;//6
-            FINRform<=0;//7
-            FINandlinlsig<=0;//8
-            FINwherereg<=0;//9
+            MEM_WBoutlwans<=0;//5
+            MEM_WBoutPC<=0;//6
+            MEM_WBoutRform<=0;//7
+            MEM_WBoutandlinlsig<=0;//8
+            MEM_WBoutwherereg<=0;//9
         end 
         else if(CLOCK == 1'b1) begin
-            FINMEMTOREG<=inlastMEMTOREG;
-            FINREGWRITE<=inlastREGWRITE;
-            FINSIZE<=inlastSIZE;
-            FINLWSIG<=inlastLWSIG;
+            MEM_WBoutMEMTOREG<=MEM_WBinlastMEMTOREG;
+            MEM_WBoutREGWRITE<=MEM_WBinlastREGWRITE;
+            MEM_WBoutSIZE<=MEM_WBinlastSIZE;
+            MEM_WBoutLWSIG<=MEM_WBinlastLWSIG;
             /*CTRL 4lines */
-            FINlwans<=inlastlwans;//5
-            FINPC<=inlastPC;//6
-            FINRform<=inlastRform;//7
-            FINandlinlsig<=inlastandlinlsig;//8
-            FINwherereg<=inlastwherereg;//9
+            MEM_WBoutlwans<=MEM_WBinlastlwans;//5
+            MEM_WBoutPC<=MEM_WBinlastPC;//6
+            MEM_WBoutRform<=MEM_WBinlastRform;//7
+            MEM_WBoutandlinlsig<=MEM_WBinlastandlinlsig;//8
+            MEM_WBoutwherereg<=MEM_WBinlastwherereg;//9
         end
     end
 endmodule
