@@ -39,8 +39,10 @@ module maintop(
     /*warikomi*/
     input clk;
 
-
 //-----------------------------------------------------------------------------------
+//-----------------------------------------------------------------------------------
+//-----------------------------------------------------------------------------------
+
     wire IF_inWRITEPC;
     wire [1:0] IF_infromJUMP,IF_infromRJUMP;
     wire [31:0] IF_infromJJAL,IF_infromJRJALR,IF_inBRANCHGO;
@@ -64,7 +66,6 @@ module maintop(
     wire [4:0]ID_inIDEXREGISTERRT,ID_inIDEXREGISTERRD;
     wire ID_inEXMEMREGWRITE,ID_inEXMEMMEMREAD;
     wire [4:0]ID_inEXMEMREGISTERRDRT;
-    wire [4:0]ID_inWRITEADD;
     wire [31:0]ID_inDATAIN32;
     //in
     //insum 17
@@ -85,9 +86,9 @@ module maintop(
 
 //-----------------------------------------------------------------------------------
 //IDEXPIPE
-    //in 0
+    //insum 0
 
-    wire ID_EXoutRegDst,ID_EXoutMemtoReg,ID_EXoutMemWrite,ID_EXoutALUSrc,ID_EXoutRegWrite;
+    wire ID_EXoutRegDst,ID_EXoutMemtoReg,ID_EXoutALUSrc,ID_EXoutMemWrite;
     wire ID_EXoutjalsig,ID_EXoutlwusig;
     wire [3:0] ID_EXoutIALUCtl;
     wire [1:0] ID_EXoutSIZE;
@@ -96,18 +97,43 @@ module maintop(
     wire [3:0] ID_EXoutALUctl;//4bits
     wire ID_EXoutshamtsig;//1bits 
     wire [4:0] ID_EXoutmainshamt;//5bits
-    wire [31:0] ID_EXoutToandlinkorder;//32bits
+    wire [31:0] ID_EXoutToandlinkorder;//32bits//PC******************
     wire ID_EXoutbalandlink;//1bits
     wire [31:0] ID_EXoutfromC,ID_EXoutfromD,ID_EXoutImm;//32bits 
     wire [4:0] ID_EXouttoEXRs;//5bits 
     //out2 
-
 //-----------------------------------------------------------------------------------
 //EXSTAGE
+    //insum 0
+
+    wire [31:0] EX_outanswer,EX_outfboutpipe;
+    wire EX_outtoANDLINK;
+    wire [4:0] EX_outtopipereg5;
+    //out 
+
+//-----------------------------------------------------------------------------------
+//EXMEMPIPE
+    wire EX_MEMoutMemtoReg,EX_MEMoutMemWrite,EX_MEMoutlwusig,EX_MEMoutANDLINK;
+    wire [1:0] EX_MEMoutSIZE;
+    wire [31:0] EX_MEMoutPCadd,EX_MEMoutforb;
+    //out
+
+//-----------------------------------------------------------------------------------
+//MEMSTAGE
+
+//-----------------------------------------------------------------------------------
+//WBSTAGE
+    wire MEM_WBoutMEMTOREG,MEM_WBoutLWSIG;
+    wire [1:0] MEM_WBoutSIZE;
+    wire [31:0] MEM_WBoutlwans,MEM_WBoutPC,MEM_WBoutRform,MEM_WBoutandlinlsig;
+
+//-----------------------------------------------------------------------------------
 
 
 
 
+//-----------------------------------------------------------------------------------
+//-----------------------------------------------------------------------------------
 //-----------------------------------------------------------------------------------
 
 
@@ -154,7 +180,7 @@ module maintop(
     .ID_inIDEXREGISTERRT(ID_inIDEXREGISTERRT),.ID_inIDEXREGISTERRD(ID_inIDEXREGISTERRD),//5bits
     .ID_inEXMEMREGWRITE(ID_inEXMEMREGWRITE),.ID_inEXMEMMEMREAD(ID_inEXMEMMEMREAD),//1bits
     .ID_inEXMEMREGISTERRDRT(ID_inEXMEMREGISTERRDRT),//5bits
-    .ID_inWRITEADD(ID_inWRITEADD),//5bits <--register locate?//check1
+    //5bits <--register locate?//check1
     .ID_inDATAIN32(ID_inDATAIN32),//32bits <-- register in data//check1
     //13
     //input sum is 17
@@ -216,9 +242,9 @@ module maintop(
     //input sum 22
     //---------------------------------
 
-    .ID_EXoutRegDst(ID_EXoutRegDst),.ID_EXoutMemRead(ID_inIDEXMEMREAD),//-->EX ///-->pipe & ID!!!!
-    .ID_EXoutMemtoReg(ID_EXoutMemtoReg),.ID_EXoutMemWrite(ID_EXoutMemWrite),//-->pipe // -->pipe
-    .ID_EXoutALUSrc(ID_EXoutALUSrc),.ID_EXoutRegWrite(ID_EXoutRegWrite),//-->EX // -->pipe
+    .ID_EXoutRegDst(ID_EXoutRegDst),.ID_EXoutMemRead(ID_inIDEXMEMREAD),//-->EX ///-->pipe & ID!!
+    .ID_EXoutMemtoReg(ID_EXoutMemtoReg),.ID_EXoutMemWrite(ID_EXoutMemWrite),//-->pipe // -->pipe 
+    .ID_EXoutALUSrc(ID_EXoutALUSrc),.ID_EXoutRegWrite(),//-->EX // -->pipe &ID
     .ID_EXoutjalsig(ID_EXoutjalsig),//-->EX
     .ID_EXoutIALUCtl(ID_EXoutIALUCtl),//-->EX
     .ID_EXoutlwusig(ID_EXoutlwusig),//-->pipe
@@ -241,108 +267,129 @@ module maintop(
 
 
     ex1 userexstage(
-    .EX_inIDEXREGISTERRT(),.EX_inIDEXREGISTERRD(),
-    .EX_inREGDEST(),
+    .EX_inIDEXREGISTERRT(ID_inIDEXREGISTERRT),.EX_inIDEXREGISTERRD(ID_inIDEXREGISTERRD),//ID!,ID!
+    .EX_inREGDEST(ID_EXoutRegDst),//<--fromp
     //mux5.v //32register sitei
-    .EX_inIDEXREGISTERRS(),//&.EX_inIDEXREGISTERRT
-    .EX_inEXMEMREGISTERRDRT(),.EX_inMEMWBREGISTERRDRT(),
-    .EX_inEXMEMREGWRITE(),.EX_inMEMWBREGWRITE(),
+    .EX_inIDEXREGISTERRS(ID_EXouttoEXRs),//&.EX_inIDEXREGISTERRT //<--fromp
+    .EX_inEXMEMREGISTERRDRT(ID_inEXMEMREGISTERRDRT),.EX_inMEMWBREGISTERRDRT(ID_inMEMWBRegisterRt),//ID! ID 
+    .EX_inEXMEMREGWRITE(ID_inEXMEMREGWRITE),.EX_inMEMWBREGWRITE(ID_inMEMWBREGWRITE),//ID!,ID!
     //temp_FORWARDING_UNIT1.v//FORWARDING_UNIT1.v
-    .EX_injalsig(),.EX_injalrsig(),.EX_inbalal(),
+    .EX_injalsig(ID_EXoutjalsig),.EX_injalrsig(ID_EXoutjalrsig),.EX_inbalal(ID_EXoutbalandlink),//<--fromp
     //allsum.v
-    .EX_infromRs(),.EX_infromRt(),.EX_infromMEMWB(),.EX_infromEXMEM(),
+    .EX_infromRs(ID_EXoutfromC),.EX_infromRt(ID_EXoutfromD),//<--fromp,<--fromp
+    .EX_infromMEMWB(ID_inWBdata),.EX_infromEXMEM(ID_inMEMdata),//ID!,ID!
     //forA(),forB
-    .EX_infromshamt(),
-    .EX_inshamtsignal(),
+    .EX_infromshamt(ID_EXoutmainshamt),//<--fromp
+    .EX_inshamtsignal(ID_EXoutshamtsig),//<--fromp
     //shamt
-    .EX_iniformat(),
-    .EX_inALUSRC(),
+    .EX_iniformat(ID_EXoutImm),//<--fromp
+    .EX_inALUSRC(ID_EXoutALUSrc),//<--fromp
     //.EX_inalusrcmux 
-    .EX_infromALUctl(),
-    .EX_infromIALUctl(),
+    .EX_infromALUctl(ID_EXoutALUctl),//<--fromp
+    .EX_infromIALUctl(ID_EXoutIALUCtl),//<--fromp
 
     //----------------------------------------------------------------------------------------------
-    .EX_outanswer(),
-    .EX_outtoANDLINK(),//-------------->to pipeline
-    .EX_outtopipereg5(),
-    .EX_outfboutpipe()
-    //ALU
+    .EX_outanswer(EX_outanswer),//32bits//-->pipe
+    .EX_outtoANDLINK(EX_outtoANDLINK),//1bits//-->pipe
+    .EX_outtopipereg5(EX_outtopipereg5),//5bits//-->pipe
+    .EX_outfboutpipe(EX_outfboutpipe)//32bits//-->pipe
+
+    /*signal is all pipeline to pipeline !!!!!!!!!!!!!!!!*/
     );
 
     exmempipe userpiprexmem(
-    .CLOCK(),.RESET(),
+    .CLOCK(clk),.RESET(rst),
     //
-    .EX_MEMinMemRead(),.EX_MEMinMemtoReg(),.EX_MEMinMemWrite(),.EX_MEMinRegWrite(),
-    .EX_MEMinlwusig(),
-    .EX_MEMinSIZE(),
+    .EX_MEMinMemRead(ID_inEXMEMMEMREAD),//<--pipe-->ID!
+    .EX_MEMinMemtoReg(ID_EXoutMemtoReg),//<--pipe
+    .EX_MEMinMemWrite(ID_EXoutMemWrite),//<--pipe
+    .EX_MEMinRegWrite(ID_inEXMEMREGWRITE),//<--pipe-->ID!
+    .EX_MEMinlwusig(ID_EXoutlwusig),//<--pipe
+    .EX_MEMinSIZE(ID_EXoutSIZE),//<--pipe
     /*CTRL 6lines*/
-    .EX_MEMinPCadd(),//7
+    .EX_MEMinPCadd(ID_EXoutToandlinkorder),//7//<--pipe
     /*PC address*/
-    .EX_MEMinALUans(),.EX_MEMinforb(),//8(),9
-    .EX_MEMinANDLINK(),//10
-    .EX_MEMinREGISTER(),//11
-
+    .EX_MEMinALUans(EX_outanswer),//32bits//<--EX
+    .EX_MEMinforb(EX_outfboutpipe),//32bits//<--EX
+    .EX_MEMinANDLINK(EX_outtoANDLINK),//1bits//10//<--EX
+    .EX_MEMinREGISTER(EX_outtopipereg5),//5bits//11//<--EX
+    //input 11 
     //------------------------------------------------------>
     
-    .EX_MEMoutMemRead(),.EX_MEMoutMemtoReg(),.EX_MEMoutMemWrite(),.EX_MEMoutRegWrite(),
-    .EX_MEMoutlwusig(),
-    .EX_MEMoutSIZE(),
+    .EX_MEMoutMemRead(ID_inEXMEMMEMREAD),//-->MEM & ID! 
+    .EX_MEMoutMemtoReg(EX_MEMoutMemtoReg),//-->pipe
+    .EX_MEMoutMemWrite(EX_MEMoutMemWrite),//-->MEM & output WRITE------------!!!
+    .EX_MEMoutRegWrite(ID_inEXMEMREGWRITE),//-->pipe & ID!
+    .EX_MEMoutlwusig(EX_MEMoutlwusig),//-->pipe 
+    .EX_MEMoutSIZE(EX_MEMoutSIZE),//2bits//-->pipe & output SIZE------------!!!
     /*CTRL 6lines*/
-    .EX_MEMoutPCadd(),//7
+    .EX_MEMoutPCadd(EX_MEMoutPCadd),//7-->pipe
     /*PC address*/
-    .EX_MEMoutALUans(),.EX_MEMoutforb(),//8(),9
-    .EX_MEMoutANDLINK(),//10
-    .EX_MEMoutREGISTER()//11
+    .EX_MEMoutALUans(ID_inMEMdata),//-->MEM & ID! & output DAD--------------!!!
+    .EX_MEMoutforb(EX_MEMoutforb),//--> output DDT --------------------------!!!
+    .EX_MEMoutANDLINK(EX_MEMoutANDLINK),//10//-->pipe
+    .EX_MEMoutREGISTER(ID_inEXMEMREGISTERRDRT)//11//-->pipe & ID! & EX 
 
 );
+    //1
+    //pipe --> output & ////EX_MEMoutSIZE is go next pipe!
+    assign SIZE = EX_MEMoutSIZE;//2bits
+    //2
+    //Memwrite ---> MEMstage & WRITE 
+    assign WRITE = EX_MEMoutMemWrite; //1bits
+    assign DAD = ID_inMEMdata;//ID!
+    assign DDT = WRITE ?  EX_MEMoutforb : 32'bz;
 
     mem1 usermemstage(
-    .MEM_inMEMWRITE(),.MEM_inMEMREAD(),
+    .MEM_inMEMWRITE(EX_MEMoutMemWrite),//-->MEM & WRITE
+    .MEM_inMEMREAD(ID_inEXMEMMEMREAD),//-->MEM & ID!!!!
     //------------------------------------------------------------------------------------------
-    .MEM_outMREQ()
+    .MEM_outMREQ(MREQ)//1bits //--->output MREQ!!!
 );
 
-
     memwbpipe userpipememwb(
-    .CLOCK(),.RESET(),
+    .CLOCK(clk),.RESET(rst),
     //
-    .MEM_WBinlastMEMTOREG(),.MEM_WBinlastREGWRITE(),
-    .MEM_WBinlastSIZE(),
-    .MEM_WBinlastLWSIG(),
+    .MEM_WBinlastMEMTOREG(EX_MEMoutMemtoReg),//<--pipe
+    .MEM_WBinlastREGWRITE(ID_inEXMEMREGWRITE),//<--pipe & ID!
+    .MEM_WBinlastSIZE(EX_MEMoutSIZE),//<--pipe--> assign top's output SIZE 
+    .MEM_WBinlastLWSIG(EX_MEMoutlwusig),//<--pipe 
     /*CTRL 4lines */
-    .MEM_WBinlastlwans(),//5
-    .MEM_WBinlastPC(),//6
-    .MEM_WBinlastRform(),//7
-    .MEM_WBinlastandlinlsig(),//8
-    .MEM_WBinlastwherereg(),//9
+    .MEM_WBinlastlwans(DDT),//5//<-------------------------------------DDT!!!!!!!!!!!!!!!!!!!!!!
+    .MEM_WBinlastPC(EX_MEMoutPCadd),//32bits//<--pipe
+    .MEM_WBinlastRform(ID_inMEMdata),//32bits//<-- pipe & ID! 
+    .MEM_WBinlastandlinlsig(EX_MEMoutANDLINK),//1bits//<-------pipe
+    .MEM_WBinlastwherereg(ID_inEXMEMREGISTERRDRT),//5bits<--pipe & ID!!!
     //input 9lines + CLOCK RESET
 
-    //---------------------------------------->>>
-    .MEM_WBoutMEMTOREG(),.MEM_WBoutREGWRITE(),
-    .MEM_WBoutSIZE(),
-    .MEM_WBoutLWSIG(),
+    //--------------------------------------------------------------------------------------------
+
+    .MEM_WBoutMEMTOREG(MEM_WBoutMEMTOREG),//-->WB
+    .MEM_WBoutREGWRITE(ID_inMEMWBREGWRITE),//-->WB & ID!
+    .MEM_WBoutSIZE(MEM_WBoutSIZE),//2bits//-->WB
+    .MEM_WBoutLWSIG(MEM_WBoutLWSIG),//1bits//-->WB
     /*CTRL 4lines */
-    .MEM_WBoutlwans(),//5
-    .MEM_WBoutPC(),//6
-    .MEM_WBoutRform(),//7
-    .MEM_WBoutandlinlsig(),//8
-    .MEM_WBoutwherereg()//9
+    .MEM_WBoutlwans(MEM_WBoutlwans),//32bits//-->WB
+    .MEM_WBoutPC(MEM_WBoutPC),//32bits//-->WB
+    .MEM_WBoutRform(MEM_WBoutRform),//32bits//-->WB
+    .MEM_WBoutandlinlsig(MEM_WBoutandlinlsig),//-->WB
+    .MEM_WBoutwherereg(ID_inMEMWBRegisterRt)//-->ID
     //output 9lines 
     );
 
 
     we1 userwbstage(
-    .WB_infromplw(),
-    .WB_inLASTSIZE(),
-    .WB_insignLW(),
+    .WB_infromplw(MEM_WBoutlwans),//32bits//<--pipe
+    .WB_inLASTSIZE(MEM_WBoutSIZE),//2bits//<--pipe
+    .WB_insignLW(MEM_WBoutLWSIG),//1bits//<--pipe
     //lwunsigned.v // out is wire "EDITLOAD"
-    .WB_infrompaddANS(),
-    .WB_infrompMEMTOREG(),
+    .WB_infrompaddANS(MEM_WBoutRform),//32bits//<--pipe(Rform...)
+    .WB_infrompMEMTOREG(MEM_WBoutMEMTOREG),//1bits//<--pipe
     //mux.v(lwRmux) --> out:wire LASTJUDGE
-    .WB_inALINKPC(),
-    .WB_inLINKSIG(),
+    .WB_inALINKPC(MEM_WBoutPC),//32bits//<--pipe
+    .WB_inLINKSIG(MEM_WBoutandlinlsig),//1bits//<--pipe
     //---------------------------------------------------------------------------------------------------------------
-    .WB_outGOREGDATA()
+    .WB_outGOREGDATA(ID_inDATAIN32)
     );
 
 

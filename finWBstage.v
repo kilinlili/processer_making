@@ -9,7 +9,7 @@ module we1(
     WB_inALINKPC,
     WB_inLINKSIG,
     //---------------------------------------------------------------------------------------------------------------
-    WB_outGOREGDATA
+    WB_outGOREGDATA,
     );
 
     input [31:0] WB_infromplw;

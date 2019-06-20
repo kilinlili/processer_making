@@ -1,8 +1,15 @@
 module mem1(
-    output [1:0] fromP_SIZE,
-    output fromP_MEMWRITE,fromP_MEMREAD,
-    output [31:0] toADDRESS,WRITEDATA,
-    input[31:0] LOADDATA
+    MEM_inLOADDATA,
+    //------------------------------------------------------------------------------------------
+    MEM_outSIZE,
+    MEM_outMEMWRITE,MEM_outMEMREAD,
+    MEM_outADDRESS,MEM_outWRITEDATA,
+
 );
+    input[31:0] MEM_inLOADDATA;
+    //-------------------------------------------------------------------------------------------
+    output [1:0] MEM_outSIZE;
+    output MEM_outMEMWRITE,MEM_outMEMREAD;
+    output [31:0] MEM_outADDRESS,MEM_outWRITEDATA;
 
 endmodule 

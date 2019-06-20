@@ -2,46 +2,47 @@ module id1(
     CLOCK,RESET,
     IFID_ORDER,
     IFID_PCADD4,
-    ID_inMEMID_inWBREGWRITE,
-    ID_inMEMWBRegisterRt,
+    //4
+    ID_inMEMWBREGWRITE,//ID_inMEMID_inWBREGWRITE
+    ID_inMEMWBRegisterRt,//----------------------------
     ID_inWBdata,ID_inMEMdata,
     ID_inIDEXMEMREAD,ID_inIDEXREGWRITE,
     ID_inIDEXREGISTERRT,ID_inIDEXREGISTERRD,
     ID_inEXMEMREGWRITE,ID_inEXMEMMEMREAD,
     ID_inEXMEMREGISTERRDRT,
-    ID_inWRITEADD,
     ID_inDATAIN32,
-    ID_inWBREGWRITE,
+    //13
+    //input sum is 17
 
     ID_outIFIDWRITE,ID_outPCWRITE,
     ID_outtoandlinkorder,
     ID_outjumpaddress,
-    ID_outtoEXRd,
-    ID_outtoEXRs,
-    ID_outtoEXRt,
-    ID_outtoshamt,
-    ID_outtoandlinkorder,
-    ID_outjumpaddress,
+    //4
     ID_outtoEXRd,
     ID_outtoEXRs,
     ID_outtoEXRt,
     ID_outImmout,
-    ID_outtoshamt,
+    ID_outtoshamt,///
     ID_outDATA1,ID_outDATA2,
     ID_outbaddress,
     ID_outbalandlink,
     ID_outbeqtojrjalr32,
+    //10
     ID_outtoIFpcsrc,
     ID_outtoIFjump,
     ID_outALUctltopipe,
-    ID_outALUopshamtsig,
+    ID_outALUopshamtsig,///
     ID_outALUopjalrsig,
     ID_outALUoprjump,
+    //6
     ID_outRegDst,ID_outMemRead,ID_outMemtoReg,ID_outMemWrite,ID_outALUSrc,ID_outRegWrite,
     ID_outjalsig,
     ID_outIALUCtl,
     ID_outlwusig,
     ID_outSIZE,
+    //10
+
+    //output is 30
 );
 
 /////////////////////////////////////////////////////////////////////////////////////////////////
@@ -49,17 +50,18 @@ module id1(
     input CLOCK,RESET;
     input  [31:0] IFID_ORDER;//from IFIDpipeline
     input  [31:0] IFID_PCADD4;//from IFIDpipeline
-    input ID_inMEMID_inWBREGWRITE;
+    //4
+    input ID_inMEMWBREGWRITE;
     input [4:0] ID_inMEMWBRegisterRt;
-    input [31:0] ID_inWBdata,ID_inMEMdata;
-    input [4:0] ID_inWRITEADD;//& wire IFIDRs & wire IFIDRt
+    input [31:0] ID_inWBdata,ID_inMEMdata;//& wire IFIDRs & wire IFIDRt
     input [31:0] ID_inDATAIN32;
-    input ID_inWBREGWRITE;
     input ID_inIDEXMEMREAD,ID_inIDEXREGWRITE;
     input [4:0] ID_inIDEXREGISTERRT,ID_inIDEXREGISTERRD;
     input ID_inEXMEMREGWRITE,ID_inEXMEMMEMREAD;
     input [4:0] ID_inEXMEMREGISTERRDRT;
+    //13
 
+    //
     output ID_outIFIDWRITE,ID_outPCWRITE;
     output [31:0] ID_outtoandlinkorder;
     output [31:0] ID_outjumpaddress;
@@ -68,11 +70,14 @@ module id1(
     output [4:0] ID_outtoEXRs;
     output [4:0] ID_outtoEXRt;
     output [4:0] ID_outtoshamt;
+    //10
+
     output ID_outRegDst,ID_outMemRead,ID_outMemtoReg,ID_outMemWrite,ID_outALUSrc,ID_outRegWrite;
     output ID_outjalsig;
     output [3:0] ID_outIALUCtl;
     output ID_outlwusig;
     output [1:0] ID_outSIZE;
+    //10
 
     output [31:0] ID_outbaddress;
     output ID_outbalandlink;
@@ -84,6 +89,8 @@ module id1(
     output ID_outALUopjalrsig;
     output [1:0] ID_outALUoprjump;
     output [31:0] ID_outImmout;
+    //10
+    //output sum is 30
     
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     wire [5:0]IFIDop = IFID_ORDER[31:26];//Q1
@@ -139,7 +146,7 @@ module id1(
     forwarding2 forward2(
         .ForwardC(forc),.ForwardD(ford),//to forwardc & fowardd
         .EX_MEM_RegWrite(ID_inEXMEMREGWRITE),.EX_MEM_Memread(ID_inEXMEMMEMREAD),
-        .MEM_WB_RegWrite(ID_inMEMID_inWBREGWRITE),
+        .MEM_WB_RegWrite(ID_inMEMWBREGWRITE),
         .EX_MEM_RegisterR(ID_inEXMEMREGISTERRDRT),.MEM_WB_RegisterRt(ID_inMEMWBRegisterRt),
         .IF_ID_RegisterRs(IFIDRs),.IF_ID_RegisterRt(IFIDRt)
     );
@@ -169,7 +176,7 @@ module id1(
 
     adder branchadd(
         .data1(tobranchaddA),.data2(IFID_PCADD4),//data1 is from 2bitleft ,data2 is from IFIDPIPELINE
-        .adder_out(ID_outbaddress)//
+        .adder_out(ID_outbaddress)//-->IF!
     );
 
     beqjump beqjumpctrl(
@@ -180,7 +187,7 @@ module id1(
     mainbeq i_mainbeq(
         .fromreg1(Ctobeqandpipe)/*32*/,.fromreg2(Dtobeqandpipe)/*32bit*/,.ctlbeq(beqjumpcode)/*6bit in*/,
         .branchin(tobeqand),.alout(ID_outbalandlink),//wire:tobeqand -> iand(R)//output ID_outbalandlink
-        .jrre(ID_outbeqtojrjalr32)//32bit jump saki data
+        .jrre(ID_outbeqtojrjalr32)//-->IF!
     );
     
     
@@ -235,7 +242,7 @@ module id1(
     );
     iand andtoIFstage(
         .left(toBranch),.right(tobeqand),
-        .ans(ID_outtoIFpcsrc)//output OK 
+        .ans(ID_outtoIFpcsrc)//--> IF!
     );
     hazard mainhazard(
         .muxzero(zerosignal),//wire out //to crtlmux
@@ -266,9 +273,9 @@ module id1(
     rf32x32 mainREG(
 		.clk(CLOCK),.reset(RESET),//input
 		// Inputs
-		.wr_n(ID_inWBREGWRITE),//input regwrite
+		.wr_n(ID_inMEMWBREGWRITE),//input regwrite
 		.rd1_addr(IFIDRs), .rd2_addr(IFIDRt), //wire in 5bits
-        .wr_addr(ID_inWRITEADD),//input "out of IDstage" 5bits
+        .wr_addr(ID_inMEMWBRegisterRt),//input "out of IDstage" 5bits
 		.data_in(ID_inDATAIN32),//input "out of IDstage" 32bits 
 		.data1_out(fromRegRs), .data2_out(fromRegRt)//wire out 32bits //to forC & forD
     );

@@ -73,7 +73,7 @@ module idexpipe(
     output reg [3:0] ID_EXoutALUctl;//12
     output reg ID_EXoutshamtsig;//13
     output reg [4:0] ID_EXoutmainshamt;//14
-    output reg [31:0] ID_EXoutToandlinkorder;//15
+    output reg [31:0] ID_EXoutToandlinkorder;//15//<---PC******
     output reg ID_EXoutbalandlink;//16
     output reg[31:0] ID_EXoutfromC,ID_EXoutfromD;//17,18
     output reg [31:0] ID_EXoutImm;//19
